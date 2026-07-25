@@ -154,6 +154,18 @@ where radar coverage overlaps; source gates are never averaged or modified.
 
 ![CONUS hourly NEXRAD reflectivity mosaic](figures/national-mosaic.png)
 
+The date-level batch action exports the complete synchronized map history as
+a looping GIF. For the default hourly download cadence, a full-day dataset
+becomes 24 full-CONUS frames:
+
+<p align="center">
+  <img
+    src="figures/2026-07-24-conus-mosaic-60min-1200px-250ms.gif"
+    alt="Full-day synchronized CONUS NEXRAD reflectivity history for July 24, 2026"
+    width="900"
+  >
+</p>
+
 The interactive map includes:
 
 - official U.S. Census state boundaries bundled for offline use;
@@ -168,6 +180,19 @@ Its batch action renders every synchronized frame at a configured
 high-resolution grid, uses every scan's complete native radar range, and
 writes one looping GIF per date. The batch path bypasses interactive
 viewport rasterization.
+
+Run that export from the date row's action button in the browser, or dispatch
+it directly:
+
+```bash
+nexrad-viewer batch \
+  --workspace nexrad-national \
+  --item 2026-07-24 \
+  --action render-national-mosaic-gif
+```
+
+The resulting filename records the alignment cadence, map width, and frame
+duration, and the durable artifact is written under `outputs/`.
 
 ## Data accuracy and provenance
 
