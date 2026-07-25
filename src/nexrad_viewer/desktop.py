@@ -82,6 +82,17 @@ class _DesktopApi:
         with self._lock:
             return self._fullscreen
 
+    def choose_directory(self) -> str | None:
+        """Open the native folder picker used by Sigvue's workspace wizard."""
+        with self._lock:
+            window = self._window
+        if window is None:
+            return None
+        from webview import FileDialog
+
+        selected = window.create_file_dialog(FileDialog.FOLDER)
+        return str(selected[0]) if selected else None
+
     def _restored(self) -> None:
         with self._lock:
             if not self._fullscreen:

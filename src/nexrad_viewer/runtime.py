@@ -82,6 +82,7 @@ subtitle = "Exact Level III base-reflectivity sequences"
 use = "nexrad_viewer.workspace:create_workspace"
 id = "nexrad"
 name = "NEXRAD Base Reflectivity"
+flatten_discovery = true
 description = "Browse and play native NOAA NEXRAD Level III scan sequences."
 category = "weather radar"
 tags = ["NOAA", "NEXRAD", "Level III", "reflectivity", "real data"]

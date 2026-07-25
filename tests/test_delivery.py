@@ -36,12 +36,17 @@ class FakeWindow:
         )
         self.scripts = []
         self.fullscreen_toggles = 0
+        self.selected_directory = "/tmp/radar-data"
 
     def evaluate_js(self, script):
         self.scripts.append(script)
 
     def toggle_fullscreen(self):
         self.fullscreen_toggles += 1
+
+    def create_file_dialog(self, dialog_type):
+        self.dialog_type = dialog_type
+        return (self.selected_directory,)
 
 
 def test_runtime_profile_uses_explicit_durable_paths():
@@ -60,6 +65,7 @@ def test_runtime_profile_uses_explicit_durable_paths():
         workspace = profile.workspaces[0]
         assert workspace.module_name == "nexrad_viewer.workspace"
         assert workspace.attribute == "create_workspace"
+        assert workspace.flatten_discovery is True
         assert Path(workspace.configuration["data_root"]) == data.resolve()
         assert Path(workspace.configuration["output_root"]) == output.resolve()
         assert payload["workspaces"][0]["id"] == "nexrad"
@@ -128,6 +134,7 @@ def test_desktop_window_hosts_a_live_private_sigvue_server():
             result["start_options"] = options
 
         fake_webview = SimpleNamespace(
+            FileDialog=SimpleNamespace(FOLDER=20),
             create_window=create_window,
             start=start,
         )
@@ -158,6 +165,8 @@ def test_desktop_window_hosts_a_live_private_sigvue_server():
         assert result["options"]["height"] == 700
         assert result["options"]["min_size"] == (900, 600)
         bridge = result["options"]["js_api"]
+        assert bridge.choose_directory() == "/tmp/radar-data"
+        assert window.dialog_type == 20
         assert bridge.toggle_fullscreen() is True
         for handler in window.events.restored.handlers:
             handler()
