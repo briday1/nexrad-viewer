@@ -10,16 +10,15 @@ families rather than guessing at their encodings.
 from __future__ import annotations
 
 import bz2
-from datetime import datetime, timedelta, timezone
 import gzip
-from pathlib import Path
 import re
 import struct
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import numpy as np
 
 from .models import NexradLevel3Header, NexradLevel3Radial
-
 
 MESSAGE_AND_DESCRIPTION_BYTES = 120
 PACKET_CODE_DIGITAL_RADIAL = 16
@@ -317,9 +316,9 @@ def read_level3_radial(path: str | Path) -> NexradLevel3Radial:
 __all__ = [
     "COMPRESSION_BZIP2",
     "COMPRESSION_NONE",
-    "NexradFormatError",
     "PACKET_CODE_DIGITAL_RADIAL",
     "PRODUCT_CODE_SUPER_RESOLUTION_REFLECTIVITY",
+    "NexradFormatError",
     "read_level3_header",
     "read_level3_radial",
 ]

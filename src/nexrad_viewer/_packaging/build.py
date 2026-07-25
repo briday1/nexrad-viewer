@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
-from importlib.resources import as_file, files
 import os
+from importlib.resources import as_file, files
 from pathlib import Path
 
 
@@ -41,9 +41,7 @@ def main() -> None:
     elif args.without_data:
         os.environ["NEXRAD_VIEWER_BUNDLE_DATA"] = "0"
 
-    resource = files("nexrad_viewer._packaging").joinpath(
-        "nexrad_viewer.spec"
-    )
+    resource = files("nexrad_viewer._packaging").joinpath("nexrad_viewer.spec")
     arguments = ["--clean", "--noconfirm", *pyinstaller_args]
     with as_file(resource) as spec_path:
         run([*arguments, str(spec_path)])

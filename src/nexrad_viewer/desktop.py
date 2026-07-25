@@ -12,7 +12,6 @@ from sigvue.web.application import _make_handler, create_app
 
 from nexrad_viewer.runtime import APPLICATION_NAME, runtime_profile
 
-
 _NATIVE_FULLSCREEN_SCRIPT = r"""
 (() => {
   const button = document.querySelector('#fullscreen-toggle');
@@ -99,9 +98,7 @@ class _DesktopApi:
             self._fullscreen = False
             window = self._window
         if window is not None:
-            window.evaluate_js(
-                "window.__nexradSetNativeFullscreen?.(false)"
-            )
+            window.evaluate_js("window.__nexradSetNativeFullscreen?.(false)")
 
 
 def _install_native_fullscreen(window: Any) -> None:

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from math import ceil, isfinite
 from pathlib import Path
-import re
 from tempfile import NamedTemporaryFile
 
 import numpy as np
@@ -21,7 +21,6 @@ from sigvue import (
 from .analysis import cartesian_display_grid
 from .formats.nexrad import NexradLevel3Sequence, open_scan
 from .plots import NEXRAD_COLORSCALE
-
 
 RENDER_GIF = "render-full-resolution-gif"
 
@@ -46,12 +45,16 @@ def _palette() -> list[int]:
         dtype=np.float64,
     )
     samples = np.linspace(0.0, 1.0, 254)
-    colors = np.column_stack(
-        [
-            np.interp(samples, locations, stop_colors[:, channel])
-            for channel in range(3)
-        ]
-    ).round().astype(np.uint8)
+    colors = (
+        np.column_stack(
+            [
+                np.interp(samples, locations, stop_colors[:, channel])
+                for channel in range(3)
+            ]
+        )
+        .round()
+        .astype(np.uint8)
+    )
     entries = [(8, 17, 23), *map(tuple, colors), (255, 255, 255)]
     return [component for color in entries for component in color]
 
@@ -89,12 +92,9 @@ def _frame(
     )
     finite = np.isfinite(dbz)
     indexes = np.zeros(dbz.shape, dtype=np.uint8)
-    indexes[finite] = (
-        1
-        + np.rint(
-            np.clip((dbz[finite] + 20.0) / 95.0, 0.0, 1.0) * 253.0
-        ).astype(np.uint8)
-    )
+    indexes[finite] = 1 + np.rint(
+        np.clip((dbz[finite] + 20.0) / 95.0, 0.0, 1.0) * 253.0
+    ).astype(np.uint8)
     map_image = Image.fromarray(np.flipud(indexes), mode="P")
     map_image.putpalette(GIF_PALETTE)
 
@@ -124,13 +124,10 @@ def _frame(
         font=detail_font,
     )
 
-    center_x = (
-        (scan.i_center_km + radius_km) / (2.0 * radius_km) * pixels
-    )
-    center_y = (
-        (radius_km - scan.j_center_km) / (2.0 * radius_km) * pixels
-        + header_height
-    )
+    center_x = (scan.i_center_km + radius_km) / (2.0 * radius_km) * pixels
+    center_y = (radius_km - scan.j_center_km) / (
+        2.0 * radius_km
+    ) * pixels + header_height
     line_width = max(1, pixels // 640)
     for fraction in (0.25, 0.5, 0.75, 1.0):
         ring = fraction * pixels / 2.0
@@ -206,9 +203,7 @@ def render_sequence_gif(
 class NexradGifBatch(Batch[NexradLevel3Sequence]):
     """Item and workspace actions for deterministic PPI animations."""
 
-    item_actions = (
-        CapabilityChoice(RENDER_GIF, "Render full-resolution GIF"),
-    )
+    item_actions = (CapabilityChoice(RENDER_GIF, "Render full-resolution GIF"),)
     workspace_actions = (
         CapabilityChoice(RENDER_GIF, "Render all full-resolution GIFs"),
     )
@@ -227,9 +222,7 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
             or not isinstance(frame_duration_ms, int)
             or frame_duration_ms < 20
         ):
-            raise ValueError(
-                "GIF frame duration must be an integer of at least 20 ms"
-            )
+            raise ValueError("GIF frame duration must be an integer of at least 20 ms")
         self.output_root = Path(output_root).expanduser().resolve()
         self.radius_km = float(radius_km)
         self.frame_duration_ms = frame_duration_ms
@@ -241,10 +234,7 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
             resource.identifier.lower(),
         ).strip("-")
         radius = f"{self.radius_km:g}".replace(".", "p")
-        return (
-            f"{slug}-ppi-{radius}km-"
-            f"{self.frame_duration_ms}ms.gif"
-        )
+        return f"{slug}-ppi-{radius}km-{self.frame_duration_ms}ms.gif"
 
     def item_destination(
         self,
@@ -309,8 +299,8 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
 
 
 __all__ = [
-    "NexradGifBatch",
     "RENDER_GIF",
+    "NexradGifBatch",
     "full_resolution_pixels",
     "render_sequence_gif",
 ]

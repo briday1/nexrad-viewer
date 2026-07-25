@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from contextlib import nullcontext
 from pathlib import Path
-import sys
 
 from sigvue.web.application import main as sigvue_main
 
@@ -36,9 +36,7 @@ def main() -> None:
     if options.config is not None and (
         options.data_root is not None or options.output_root is not None
     ):
-        parser.error(
-            "--config cannot be combined with --data-root or --output-root"
-        )
+        parser.error("--config cannot be combined with --data-root or --output-root")
     if options.config is not None:
         profile_context = nullcontext(options.config)
     else:

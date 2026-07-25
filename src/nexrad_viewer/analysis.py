@@ -46,8 +46,7 @@ def cartesian_display_grid(
     covered = angular_offset <= scan.azimuth_width_deg[radial] + 1e-6
 
     gate = np.floor(
-        (slant_range - scan.first_range_bin * scan.gate_size_km)
-        / scan.gate_size_km
+        (slant_range - scan.first_range_bin * scan.gate_size_km) / scan.gate_size_km
     ).astype(np.int32)
     valid = (
         covered
@@ -73,21 +72,15 @@ def measured_histogram(
 ) -> tuple[np.ndarray, np.ndarray, float, float, float]:
     """Return exact measured-bin coordinates, counts, and encoded bounds."""
     valid = scan.valid_gate_mask()
-    measured_codes = scan.level_codes[
-        valid & (scan.level_codes >= FIRST_MEASURED_CODE)
-    ]
+    measured_codes = scan.level_codes[valid & (scan.level_codes >= FIRST_MEASURED_CODE)]
     code_counts = np.bincount(measured_codes, minlength=256)
     present_codes = (
-        np.flatnonzero(code_counts[FIRST_MEASURED_CODE:])
-        + FIRST_MEASURED_CODE
+        np.flatnonzero(code_counts[FIRST_MEASURED_CODE:]) + FIRST_MEASURED_CODE
     )
     increment = scan.header.value_increment_dbz
     measured_min = scan.header.minimum_value_dbz
     measured_max = measured_min + (255 - FIRST_MEASURED_CODE) * increment
-    histogram_dbz = (
-        measured_min
-        + (present_codes - FIRST_MEASURED_CODE) * increment
-    )
+    histogram_dbz = measured_min + (present_codes - FIRST_MEASURED_CODE) * increment
     return (
         histogram_dbz,
         code_counts[present_codes],

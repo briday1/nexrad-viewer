@@ -9,7 +9,6 @@ description = "A focused NOAA NEXRAD Level III browser built with Sigvue"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "certifi>=2024.2.2",
     "numpy>=1.24",
     "pillow>=9.4",
     "plotly>=6.1.1",
@@ -25,7 +24,6 @@ desktop = ["pyinstaller>=6.0", "pywebview>=6.0"]
 nexrad-viewer = "nexrad_viewer.cli:main"
 nexrad-viewer-desktop = "nexrad_viewer.desktop:main"
 nexrad-viewer-build = "nexrad_viewer._packaging.build:main"
-nexrad-download = "nexrad_viewer.download:main"
 
 [project.entry-points."sigvue.workspaces"]
 nexrad-viewer = "nexrad_viewer.workspace:create_workspace"
@@ -38,3 +36,6 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 nexrad_viewer = ["_packaging/*.spec"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

@@ -14,7 +14,6 @@ from .analysis import (
 from .formats.nexrad import NexradLevel3Radial, NexradSequenceSelection
 from .style import COLORS, style_plotly
 
-
 NEXRAD_COLORSCALE = (
     (0.00, "#646464"),
     (0.15, "#04e9e7"),
@@ -161,17 +160,85 @@ def ppi_figure(
         hovermode="closest",
         margin={"l": 18, "r": 76, "t": 52, "b": 18},
         shapes=[
-            {"type": "line", "xref": "paper", "yref": "paper", "x0": 0.055, "x1": 0.055, "y0": 0.055, "y1": 0.12, "line": {"color": ink, "width": 2}},
-            {"type": "line", "xref": "paper", "yref": "paper", "x0": 0.055, "x1": 0.12, "y0": 0.055, "y1": 0.055, "line": {"color": ink, "width": 2}},
-            {"type": "path", "xref": "paper", "yref": "paper", "path": "M 0.055 0.13 L 0.048 0.117 L 0.062 0.117 Z", "line": {"color": ink, "width": 1}, "fillcolor": ink},
-            {"type": "path", "xref": "paper", "yref": "paper", "path": "M 0.13 0.055 L 0.117 0.048 L 0.117 0.062 Z", "line": {"color": ink, "width": 1}, "fillcolor": ink},
+            {
+                "type": "line",
+                "xref": "paper",
+                "yref": "paper",
+                "x0": 0.055,
+                "x1": 0.055,
+                "y0": 0.055,
+                "y1": 0.12,
+                "line": {"color": ink, "width": 2},
+            },
+            {
+                "type": "line",
+                "xref": "paper",
+                "yref": "paper",
+                "x0": 0.055,
+                "x1": 0.12,
+                "y0": 0.055,
+                "y1": 0.055,
+                "line": {"color": ink, "width": 2},
+            },
+            {
+                "type": "path",
+                "xref": "paper",
+                "yref": "paper",
+                "path": "M 0.055 0.13 L 0.048 0.117 L 0.062 0.117 Z",
+                "line": {"color": ink, "width": 1},
+                "fillcolor": ink,
+            },
+            {
+                "type": "path",
+                "xref": "paper",
+                "yref": "paper",
+                "path": "M 0.13 0.055 L 0.117 0.048 L 0.117 0.062 Z",
+                "line": {"color": ink, "width": 1},
+                "fillcolor": ink,
+            },
             # A scale bar whose paper length corresponds to the full-view range.
-            {"type": "line", "xref": "paper", "yref": "paper", "x0": 0.68, "x1": 0.68 + scale_fraction, "y0": 0.07, "y1": 0.07, "line": {"color": ink, "width": 4}},
+            {
+                "type": "line",
+                "xref": "paper",
+                "yref": "paper",
+                "x0": 0.68,
+                "x1": 0.68 + scale_fraction,
+                "y0": 0.07,
+                "y1": 0.07,
+                "line": {"color": ink, "width": 4},
+            },
         ],
         annotations=[
-            {"xref": "paper", "yref": "paper", "x": 0.055, "y": 0.145, "text": "<b>N</b>", "showarrow": False, "font": {"color": ink, "size": 11}, "bgcolor": legend_background},
-            {"xref": "paper", "yref": "paper", "x": 0.145, "y": 0.055, "text": "<b>E</b>", "showarrow": False, "font": {"color": ink, "size": 11}, "bgcolor": legend_background},
-            {"xref": "paper", "yref": "paper", "x": 0.68 + scale_fraction / 2, "y": 0.085, "text": f"<b>{scale_km:g} km</b>", "showarrow": False, "font": {"color": ink, "size": 11}, "bgcolor": legend_background},
+            {
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.055,
+                "y": 0.145,
+                "text": "<b>N</b>",
+                "showarrow": False,
+                "font": {"color": ink, "size": 11},
+                "bgcolor": legend_background,
+            },
+            {
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.145,
+                "y": 0.055,
+                "text": "<b>E</b>",
+                "showarrow": False,
+                "font": {"color": ink, "size": 11},
+                "bgcolor": legend_background,
+            },
+            {
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.68 + scale_fraction / 2,
+                "y": 0.085,
+                "text": f"<b>{scale_km:g} km</b>",
+                "showarrow": False,
+                "font": {"color": ink, "size": 11},
+                "bgcolor": legend_background,
+            },
         ],
     )
     return styled
@@ -222,10 +289,7 @@ def histogram_figure(
         boxed_axes=True,
     )
     styled.update_layout(
-        uirevision=(
-            "weather-radar-distribution:"
-            f"{scan.header.scan_time.isoformat()}"
-        )
+        uirevision=(f"weather-radar-distribution:{scan.header.scan_time.isoformat()}")
     )
     return styled
 

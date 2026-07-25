@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from types import SimpleNamespace
-from tempfile import TemporaryDirectory
 import sys
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 from unittest.mock import patch
 from urllib.request import urlopen
 
@@ -108,12 +108,10 @@ def test_nexrad_cli_supplies_profile_and_preserves_sigvue_arguments():
         ]
         assert observed["arguments"][2:] == ["batch", "--list"]
         workspace = observed["profile"].workspaces[0]
-        assert Path(workspace.configuration["data_root"]) == (
-            root / "data"
-        ).resolve()
-        assert Path(workspace.configuration["output_root"]) == (
-            root / "outputs"
-        ).resolve()
+        assert Path(workspace.configuration["data_root"]) == (root / "data").resolve()
+        assert (
+            Path(workspace.configuration["output_root"]) == (root / "outputs").resolve()
+        )
 
 
 def test_desktop_window_hosts_a_live_private_sigvue_server():
@@ -176,36 +174,27 @@ def test_desktop_window_hosts_a_live_private_sigvue_server():
         assert "#fullscreen-toggle" in window.scripts[0]
         assert "stopImmediatePropagation" in window.scripts[0]
         assert "event.key !== 'Escape'" in window.scripts[0]
-        assert window.scripts[1] == (
-            "window.__nexradSetNativeFullscreen?.(false)"
-        )
+        assert window.scripts[1] == ("window.__nexradSetNativeFullscreen?.(false)")
         assert result["start_options"] == {"debug": False}
 
 
 def test_package_declares_cli_desktop_and_build_entry_points():
     project = Path(__file__).resolve().parents[1]
-    payload = tomllib.loads(
-        (project / "pyproject.toml").read_text(encoding="utf-8")
-    )
+    payload = tomllib.loads((project / "pyproject.toml").read_text(encoding="utf-8"))
     scripts = payload["project"]["scripts"]
 
     assert scripts["nexrad-viewer"] == "nexrad_viewer.cli:main"
     assert scripts["nexrad-viewer-desktop"] == "nexrad_viewer.desktop:main"
-    assert (
-        scripts["nexrad-viewer-build"]
-        == "nexrad_viewer._packaging.build:main"
-    )
+    assert scripts["nexrad-viewer-build"] == "nexrad_viewer._packaging.build:main"
+    assert "nexrad-download" not in scripts
+    assert not (project / "src" / "nexrad_viewer" / "download.py").exists()
+    assert {
+        requirement.split(">=", 1)[0]
+        for requirement in payload["project"]["dependencies"]
+    } == {"numpy", "pillow", "plotly", "sigvue"}
     assert {"pyinstaller", "pywebview"} == {
         requirement.split(">=", 1)[0]
-        for requirement in payload["project"]["optional-dependencies"][
-            "desktop"
-        ]
+        for requirement in payload["project"]["optional-dependencies"]["desktop"]
     }
-    spec = (
-        project
-        / "src"
-        / "nexrad_viewer"
-        / "_packaging"
-        / "nexrad_viewer.spec"
-    )
+    spec = project / "src" / "nexrad_viewer" / "_packaging" / "nexrad_viewer.spec"
     assert spec.is_file()

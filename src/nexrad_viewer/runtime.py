@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 import json
 import os
-from pathlib import Path
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
+from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Iterator
-
 
 APPLICATION_NAME = "NEXRAD Viewer"
 
@@ -52,11 +51,7 @@ def default_data_root(*, desktop: bool = False) -> Path:
     checkout = _source_checkout_root()
     if checkout is not None:
         return (checkout / "data").resolve()
-    return (
-        application_data_root() / "data"
-        if desktop
-        else working.resolve()
-    )
+    return application_data_root() / "data" if desktop else working.resolve()
 
 
 def default_output_root(*, desktop: bool = False) -> Path:

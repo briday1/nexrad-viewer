@@ -28,8 +28,7 @@ def describe_level3(path: Path) -> DataResource:
     return DataResource(
         identifier=path.name,
         title=(
-            f"{header.radar_id} {header.product_id} · "
-            f"{timestamp:%Y-%m-%d %H:%M:%S} UTC"
+            f"{header.radar_id} {header.product_id} · {timestamp:%Y-%m-%d %H:%M:%S} UTC"
         ),
         source=path,
         subtitle=(
@@ -68,10 +67,7 @@ def _describe_sequence(
     prefix = f"{relative.as_posix()}::" if navigation_path else ""
     return DataResource(
         identifier=f"{prefix}{sequence.radar_id}-{sequence.product_id}",
-        title=(
-            f"{sequence.radar_id} {sequence.product_id} "
-            "reflectivity sequence"
-        ),
+        title=(f"{sequence.radar_id} {sequence.product_id} reflectivity sequence"),
         source=sequence,
         subtitle=(
             f"{sequence.scan_count} scans · "

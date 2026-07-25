@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from itertools import pairwise
 from pathlib import Path
 from statistics import median
 
 import numpy as np
-
 
 BELOW_THRESHOLD_CODE = 0
 RANGE_FOLDED_CODE = 1
@@ -217,16 +217,7 @@ class NexradLevel3Sequence:
         elapsed = self.elapsed_seconds
         if len(elapsed) == 1:
             return 1.0
-        return float(
-            median(
-                stop - start
-                for start, stop in zip(
-                    elapsed[:-1],
-                    elapsed[1:],
-                    strict=True,
-                )
-            )
-        )
+        return float(median(stop - start for start, stop in pairwise(elapsed)))
 
 
 @dataclass(frozen=True)
@@ -241,9 +232,9 @@ class NexradSequenceSelection:
 __all__ = [
     "BELOW_THRESHOLD_CODE",
     "FIRST_MEASURED_CODE",
+    "RANGE_FOLDED_CODE",
     "NexradLevel3Header",
     "NexradLevel3Radial",
     "NexradLevel3Sequence",
     "NexradSequenceSelection",
-    "RANGE_FOLDED_CODE",
 ]

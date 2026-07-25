@@ -1,33 +1,33 @@
 import bz2
+import json
+import struct
+import unittest
 from io import BytesIO
 from pathlib import Path
-import struct
 from tempfile import TemporaryDirectory
-import json
-import unittest
 from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
 
 from nexrad_viewer.batch import RENDER_GIF
-from nexrad_viewer.download import (
-    CASE_PREFIXES,
-    DEFAULT_CASES,
-    _parse_listing_page,
-    discover_case,
-)
 from nexrad_viewer.formats.nexrad import (
     NexradFormatError,
     read_level3_header,
     read_level3_radial,
 )
+from nexrad_viewer.plots import ppi_figure
 from nexrad_viewer.reader import (
     describe_level3,
     level3_sequence_reader,
 )
-from nexrad_viewer.plots import ppi_figure
 from nexrad_viewer.workspace import create_workspace
+from scripts.download_data import (
+    CASE_PREFIXES,
+    DEFAULT_CASES,
+    _parse_listing_page,
+    discover_case,
+)
 
 
 def _set_u16(message: bytearray, halfword: int, value: int) -> None:
@@ -116,10 +116,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         self.assertEqual(10, len(DEFAULT_CASES))
         self.assertEqual(10, len(set(CASE_PREFIXES.values())))
         self.assertTrue(
-            all(
-                prefix.endswith("2024_05_20_03_")
-                for prefix in CASE_PREFIXES.values()
-            )
+            all(prefix.endswith("2024_05_20_03_") for prefix in CASE_PREFIXES.values())
         )
 
     def test_archive_listing_becomes_size_and_etag_validated_downloads(self):
@@ -159,7 +156,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         """.encode()
         response = BytesIO(payload)
 
-        with patch("nexrad_viewer.download.urlopen", return_value=response):
+        with patch("scripts.download_data.urlopen", return_value=response):
             remotes = discover_case("tlx-oklahoma-city")
 
         self.assertEqual((f"{prefix}01_13",), tuple(r.filename for r in remotes))

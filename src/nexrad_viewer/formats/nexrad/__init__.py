@@ -9,20 +9,19 @@ from .._discovery import discover_files
 from .models import (
     BELOW_THRESHOLD_CODE,
     FIRST_MEASURED_CODE,
+    RANGE_FOLDED_CODE,
     NexradLevel3Header,
     NexradLevel3Radial,
     NexradLevel3Sequence,
     NexradSequenceSelection,
-    RANGE_FOLDED_CODE,
 )
 from .reader import (
-    NexradFormatError,
     PACKET_CODE_DIGITAL_RADIAL,
     PRODUCT_CODE_SUPER_RESOLUTION_REFLECTIVITY,
+    NexradFormatError,
     read_level3_header,
     read_level3_radial,
 )
-
 
 DEFAULT_PATTERNS = ("*_N?B_*", "*.nids", "*.nids.gz")
 
@@ -87,9 +86,7 @@ def read_window(
     """Read a bounded scan window from a discovered chronological sequence."""
     if isinstance(start, bool) or not isinstance(start, int):
         raise TypeError("NEXRAD scan-window start must be an integer")
-    if count is not None and (
-        isinstance(count, bool) or not isinstance(count, int)
-    ):
+    if count is not None and (isinstance(count, bool) or not isinstance(count, int)):
         raise TypeError("NEXRAD scan-window count must be an integer")
     if start < 0 or start > sequence.scan_count:
         raise ValueError("NEXRAD scan-window start is outside the sequence")
@@ -97,24 +94,21 @@ def read_window(
     if requested < 0:
         raise ValueError("NEXRAD scan-window count cannot be negative")
     stop = min(sequence.scan_count, start + requested)
-    return tuple(
-        open(header.source_path)
-        for header in sequence.headers[start:stop]
-    )
+    return tuple(open(header.source_path) for header in sequence.headers[start:stop])
 
 
 __all__ = [
     "BELOW_THRESHOLD_CODE",
     "DEFAULT_PATTERNS",
     "FIRST_MEASURED_CODE",
+    "PACKET_CODE_DIGITAL_RADIAL",
+    "PRODUCT_CODE_SUPER_RESOLUTION_REFLECTIVITY",
+    "RANGE_FOLDED_CODE",
     "NexradFormatError",
     "NexradLevel3Header",
     "NexradLevel3Radial",
     "NexradLevel3Sequence",
     "NexradSequenceSelection",
-    "PACKET_CODE_DIGITAL_RADIAL",
-    "PRODUCT_CODE_SUPER_RESOLUTION_REFLECTIVITY",
-    "RANGE_FOLDED_CODE",
     "discover",
     "discover_sequences",
     "inspect",

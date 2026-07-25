@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 COLORS = ("#087e8b", "#d35d35", "#7656a5", "#5b7f3b")
 INK = "#13212b"
 MUTED = "#60717d"
@@ -26,7 +25,14 @@ def style_figure(figure: Any, theme: str, title: str) -> Any:
         template="plotly_dark" if dark else "simple_white",
         paper_bgcolor="#10252d" if dark else "white",
         plot_bgcolor="#10252d" if dark else "white",
-        title={"text": title, "x": 0.01, "y": 0.98, "xanchor": "left", "yanchor": "top", "font": {"size": 15}},
+        title={
+            "text": title,
+            "x": 0.01,
+            "y": 0.98,
+            "xanchor": "left",
+            "yanchor": "top",
+            "font": {"size": 15},
+        },
         margin={"l": 70, "r": 30, "t": 68, "b": 56},
         legend={
             "orientation": "h",
@@ -72,7 +78,11 @@ def style_plotly(
         template="plotly_dark" if theme == "dark" else "simple_white",
         paper_bgcolor="#10252d" if theme == "dark" else "white",
         plot_bgcolor="#10252d" if theme == "dark" else "white",
-        font={"family": "system-ui, -apple-system, sans-serif", "color": "#e7f1f3" if theme == "dark" else INK, "size": 12},
+        font={
+            "family": "system-ui, -apple-system, sans-serif",
+            "color": "#e7f1f3" if theme == "dark" else INK,
+            "size": 12,
+        },
         margin={"l": 62, "r": 28, "t": 52, "b": 54},
         hovermode="x unified",
         title={"text": title, "x": 0.02, "xanchor": "left", "font": {"size": 15}},

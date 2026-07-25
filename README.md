@@ -43,8 +43,10 @@ src/nexrad_viewer/
 ├── cli.py             application-specific Sigvue console command
 ├── desktop.py         native pywebview window and server lifetime
 ├── runtime.py         durable data/output roots and generated profile
-├── _packaging/        installed PyInstaller build support
-└── download.py        NOAA archive discovery and validated downloads
+└── _packaging/        installed PyInstaller build support
+
+scripts/
+└── download_data.py   repository-only NOAA archive downloader
 ```
 
 ## Install and download
@@ -66,7 +68,8 @@ python scripts/download_data.py
 The script queries NOAA's public Level III bucket for the selected fixed
 prefixes. Downloads are atomic and checked against the bucket's object size
 and, when supplied as a simple ETag, MD5 digest. No filename manifest is
-needed. For a small trial:
+needed. It is repository test/data tooling and is intentionally absent from
+the installed package, wheel, and console entry points. For a small trial:
 
 ```bash
 python scripts/download_data.py \
