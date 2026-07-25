@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from math import ceil
+from math import ceil, cos, radians
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +14,8 @@ from .formats.nexrad import (
     NexradLevel3Sequence,
     open_scan,
 )
+
+EARTH_KM_PER_DEGREE = 111.195
 
 
 def cartesian_display_grid(
@@ -33,9 +35,28 @@ def cartesian_display_grid(
     )
     centers = (edges[:-1] + edges[1:]) / 2.0
     x, y = np.meshgrid(centers, centers)
-    ground_range = np.hypot(x, y)
+    dbz = sample_scan_at_offsets(scan, east_km=x, north_km=y)
+    dbz[np.hypot(x, y) > maximum_range_km] = np.nan
+    return centers, centers, dbz
+
+
+def sample_scan_at_offsets(
+    scan: NexradLevel3Radial,
+    *,
+    east_km: np.ndarray,
+    north_km: np.ndarray,
+) -> np.ndarray:
+    """Sample native polar gates at requested horizontal coordinates.
+
+    The result uses nearest native radial/gate lookup without interpolating
+    scientific values. This is the shared display primitive for both an
+    individual site's Cartesian PPI and the national mosaic.
+    """
+    if east_km.shape != north_km.shape:
+        raise ValueError("east and north coordinate arrays must have equal shapes")
+    ground_range = np.hypot(east_km, north_km)
     slant_range = ground_range / scan.ground_range_scale
-    azimuth = np.degrees(np.arctan2(x, y)) % 360.0
+    azimuth = np.degrees(np.arctan2(east_km, north_km)) % 360.0
 
     order = np.argsort(scan.azimuth_start_deg)
     ordered_starts = scan.azimuth_start_deg[order]
@@ -48,23 +69,50 @@ def cartesian_display_grid(
     gate = np.floor(
         (slant_range - scan.first_range_bin * scan.gate_size_km) / scan.gate_size_km
     ).astype(np.int32)
-    valid = (
-        covered
-        & (ground_range <= maximum_range_km)
-        & (gate >= 0)
-        & (gate < scan.range_bin_count)
-    )
+    valid = covered & (gate >= 0) & (gate < scan.range_bin_count)
     safe_gate = np.clip(gate, 0, scan.range_bin_count - 1)
     valid &= safe_gate < scan.radial_gate_counts[radial]
     codes = scan.level_codes[radial, safe_gate]
     measured = valid & (codes >= FIRST_MEASURED_CODE)
-    dbz = np.full((pixels, pixels), np.nan, dtype=np.float32)
+    dbz = np.full(east_km.shape, np.nan, dtype=np.float32)
     dbz[measured] = (
         scan.header.minimum_value_dbz
         + (codes[measured].astype(np.float32) - FIRST_MEASURED_CODE)
         * scan.header.value_increment_dbz
     )
-    return centers, centers, dbz
+    return dbz
+
+
+def geographic_display_grid(
+    scan: NexradLevel3Radial,
+    *,
+    bounds: tuple[float, float, float, float],
+    width: int,
+    height: int,
+    maximum_range_km: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Sample a native scan directly over the currently visible map bounds."""
+    if width < 32 or height < 32 or maximum_range_km <= 0:
+        raise ValueError("map dimensions and radar radius must be positive")
+    west, east, south, north = bounds
+    longitude_edges = np.linspace(west, east, width + 1, dtype=np.float64)
+    latitude_edges = np.linspace(south, north, height + 1, dtype=np.float64)
+    longitudes = (longitude_edges[:-1] + longitude_edges[1:]) / 2.0
+    latitudes = (latitude_edges[:-1] + latitude_edges[1:]) / 2.0
+    longitude_grid, latitude_grid = np.meshgrid(longitudes, latitudes)
+    east_km = (
+        (longitude_grid - scan.header.longitude_deg)
+        * EARTH_KM_PER_DEGREE
+        * cos(radians(scan.header.latitude_deg))
+    )
+    north_km = (latitude_grid - scan.header.latitude_deg) * EARTH_KM_PER_DEGREE
+    dbz = sample_scan_at_offsets(
+        scan,
+        east_km=east_km,
+        north_km=north_km,
+    )
+    dbz[np.hypot(east_km, north_km) > maximum_range_km] = np.nan
+    return longitudes, latitudes, dbz
 
 
 def measured_histogram(
@@ -124,7 +172,10 @@ def sequence_histogram_count_upper(
 
 
 __all__ = [
+    "EARTH_KM_PER_DEGREE",
     "cartesian_display_grid",
+    "geographic_display_grid",
     "measured_histogram",
+    "sample_scan_at_offsets",
     "sequence_histogram_count_upper",
 ]

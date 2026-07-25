@@ -1,25 +1,30 @@
 # NOAA NEXRAD Viewer
 
-A focused local browser for native NOAA NEXRAD Level III
-super-resolution base-reflectivity sequences. This is intentionally one
-[Sigvue](https://github.com/briday1/sigvue) `Workspace`, so opening the
-application goes directly to NEXRAD sequence discovery instead of showing a
-workspace catalog.
+A focused local application for native NOAA NEXRAD Level III
+super-resolution base reflectivity, built with
+[Sigvue](https://github.com/briday1/sigvue). One shared date-oriented dataset
+feeds two workspaces:
+
+- **Individual Radar Sites** browses `date → radar sequence`, with segmented
+  scan playback and exact native-gate inspection.
+- **CONUS Radar Mosaic** treats each date as one synchronized dataset and
+  shows the nearest scan from every available site on a minimal U.S. map.
+
+Both run in an ordinary browser or the packaged desktop window. Both also
+provide deterministic batch output.
 
 ## Preview
 
-The single-workspace landing page presents every downloaded radar sequence in
-one searchable table, including its scan count and time coverage:
+Choose a date folder and then a radar sequence in the site workspace:
 
 ![NEXRAD sequence discovery table](figures/main.png)
 
-Opening a sequence provides segmented playback, display controls, and the
-native Level III base-reflectivity PPI:
+The site view provides segmented playback, display controls, and a
+georeferenced native Level III base-reflectivity map:
 
 ![Interactive 120 km NEXRAD plan-position display](figures/120_ppi.png)
 
-The same workspace can render every native scan as a deterministic,
-full-resolution animation:
+Its batch action renders each native scan as a full-resolution animation:
 
 <p align="center">
   <img
@@ -29,81 +34,83 @@ full-resolution animation:
   >
 </p>
 
-The repository is self-contained:
+## Install
 
-```text
-src/nexrad_viewer/
-├── formats/nexrad/    exact native Level III models and parser
-├── reader.py          chronological sequence discovery
-├── workspace.py       one Reader + one view callback + one Workspace
-├── view.py            controls, statistics, tabs, tables, and layout
-├── analysis.py        exact grids and sequence-wide histogram limits
-├── plots.py           PPI and native-gate distribution figures
-├── batch.py           durable full-resolution GIF rendering
-├── style.py           local Plotly styling
-├── cli.py             application-specific Sigvue console command
-├── desktop.py         native pywebview window and server lifetime
-├── runtime.py         durable data/output roots and generated profile
-└── _packaging/        installed PyInstaller build support
-
-scripts/
-└── download_data.py   repository-only NOAA archive downloader
-```
-
-## Install and download
-
-Install the viewer with native desktop support:
+Install the viewer with desktop support:
 
 ```bash
 python -m pip install -e ".[desktop]"
 ```
 
-Download ten fixed one-hour cases from TLX, FDR, VNX, ICT, DDC, INX, SGF,
-EAX, OAX, and TWX:
+## Get a full day of national data
+
+The repository downloader queries NOAA's public Level III archive and the
+current NOAA/NCEI NEXRAD station catalog. A dated download selects every
+current CONUS site and, by default, keeps the nearest exact native scan at
+each hourly boundary:
 
 ```bash
-python scripts/download_data.py
+python scripts/download_data.py --date 2026-07-24
 ```
 
-The script queries NOAA's public Level III bucket for the selected fixed
-prefixes. Downloads are atomic and checked against the bucket's object size
-and, when supplied as a simple ETag, MD5 digest. No filename manifest is
-needed. It is repository test/data tooling and is intentionally absent from
-the installed package, wheel, and console entry points. For a small trial:
+That command creates this shared layout:
+
+```text
+data/
+└── 2026-07-24/
+    ├── ABR_N0B_2026_07_24_00_02_28
+    ├── ABR_N0B_2026_07_24_01_00_35
+    ├── ...
+    └── YUX_N0B_2026_07_24_22_58_33
+```
+
+There is no manifest and no duplicate mosaic format. Completed native files
+appear atomically in the date folder; in-progress files stay in a hidden
+staging directory outside the discovery root. One interrupted or malformed
+object is skipped rather than preventing other radar data from opening.
+
+Choose another temporal cadence without changing any scan values:
 
 ```bash
+# One nearest native scan per site every 15 minutes
+python scripts/download_data.py --date 2026-07-24 --cadence-minutes 15
+
+# Every archived native scan (large)
+python scripts/download_data.py --date 2026-07-24 --all-scans
+
+# A bounded test
 python scripts/download_data.py \
-  --cases tlx-oklahoma-city \
-  --scans-per-case 3
+  --date 2026-07-24 \
+  --sites KTLX KTWX \
+  --hours 0 1 \
+  --cadence-minutes 30
 ```
 
-See the available scan counts and total download size without downloading:
+Use `--list` to obtain the exact matching scan count and byte total without
+downloading. Use `--all-regions` to include current non-CONUS NOAA sites.
+Running the script without arguments retains the compact ten-site,
+one-hour 2024 example.
 
-```bash
-python scripts/download_data.py --list
-```
+The downloader is repository test/data tooling. It is intentionally absent
+from the installed package, wheel, and console entry points.
 
 ## Run
 
-Open the viewer as a native desktop application:
+Launch the native desktop application:
 
 ```bash
 nexrad-viewer-desktop
 ```
 
-The desktop launcher hosts the same Sigvue interface in a pywebview window,
-including the framework fullscreen control, native folder selection,
-segmented radar playback, and batch actions.
-
-To use an ordinary browser instead:
+Or use an ordinary browser:
 
 ```bash
 nexrad-viewer
 ```
 
-This is an application-specific wrapper around the regular Sigvue CLI. It
-uses the checkout's `data/` and `outputs/` directories by default while
-retaining the normal server and batch options:
+The launcher uses the checkout's `data/` and `outputs/` directories by
+default. Custom durable paths and all normal Sigvue server/batch arguments
+remain available:
 
 ```bash
 nexrad-viewer --port 9000
@@ -111,34 +118,71 @@ nexrad-viewer --data-root /path/to/radar --output-root /path/to/results
 nexrad-viewer batch --list
 ```
 
-An explicit profile remains supported when needed:
+An explicit profile is optional:
 
 ```bash
 nexrad-viewer --config browser.toml
 ```
 
-Open <http://127.0.0.1:8000>. Because the generated profile contains exactly
-one workspace, the root page is the NEXRAD sequence browser. Its ten
-collection folders are deliberately flattened into ten sequence rows without
-changing their identifiers or source locations. Selecting a sequence opens
-segmented scan playback with:
+Then open <http://127.0.0.1:8000>.
 
-- previous, next, press-and-hold, automatic playback, looping, and step size;
-- a progressive plan-position reflectivity display;
-- the visual colormap picker, including the custom NEXRAD scale;
+### Individual Radar Sites
+
+The workspace preserves top-level ISO date folders. Opening a date reveals
+one sequence per radar/product; opening a sequence provides:
+
+- previous, next, press-and-hold, playback speed, looping, and step size;
+- a progressive geographic radar map with a visual colormap picker;
 - fixed native dBZ limits and viewport-aware rasterization;
 - exact native-gate distributions, statistics, and metadata.
 
-Each sequence row also has a **Render full-resolution GIF** batch action. The
-workspace-level action renders every discovered sequence. Frames use native
-range-gate spacing over the configured radius, bypass viewport raster
-reduction, loop continuously, and are saved deterministically under
-`outputs/`. Existing GIFs are recognized as complete after a restart.
+Each sequence can render a full-resolution Plan Position GIF. Every frame is
+the actual interactive Plotly Plan Position figure—not a separate batch
+plot—with the scan's full native radar range, Portland colors, the dark
+theme, and source pixels matched to native range-gate spacing. The batch path
+bypasses viewport reduction and saves deterministically under `outputs/`.
+This exact Plotly export uses Kaleido and needs Google Chrome; if Chrome is
+not already installed, run `plotly_get_chrome`.
 
-Scientific values remain native. Cartesian resampling and viewport
-rasterization are display operations only.
+### CONUS Radar Mosaic
 
-## Native desktop application
+Each ISO date folder is one national item. The segmented time control moves
+through fixed target times—hourly by default. At every target, each site
+contributes its nearest native scan within the configured tolerance. The map
+samples exact native gates onto a display grid and uses maximum reflectivity
+where radar coverage overlaps; source gates are never averaged or modified.
+
+![CONUS hourly NEXRAD reflectivity mosaic](figures/national-mosaic.png)
+
+The interactive map includes:
+
+- official U.S. Census state boundaries bundled for offline use;
+- the custom NEXRAD scale and the same visual colormap picker;
+- progressive viewport rendering that can be disabled;
+- an editable source resolution and radar radius up to the scans' complete
+  native extent;
+- hoverable radar locations and exact per-site source times;
+- loaded-buffer memory and alignment statistics.
+
+Its batch action renders every synchronized frame at a configured
+high-resolution grid, uses every scan's complete native radar range, and
+writes one looping GIF per date. The batch path bypasses interactive
+viewport rasterization.
+
+## Data accuracy and provenance
+
+The parser retains every unsigned byte from the native Level III packet.
+Codes for below-threshold and range-folded gates remain distinct from
+measured reflectivity. Cartesian PPI sampling, national map sampling, overlap
+selection, and progressive rasterization are presentation operations; they
+do not rewrite source data.
+
+The source data is NOAA NEXRAD Open Data distributed through the NOAA Open
+Data Dissemination program. Station IDs and locations come from NOAA/NCEI's
+current HOMR NEXRAD station report. State outlines are a packaged extract
+from the official U.S. Census TIGERweb States layer.
+
+## Native desktop build
 
 Build the platform-native PyInstaller artifact:
 
@@ -146,39 +190,23 @@ Build the platform-native PyInstaller artifact:
 nexrad-viewer-build
 ```
 
-The desktop extra installed during setup includes both pywebview and
-PyInstaller. On macOS this produces `dist/NEXRAD Viewer.app`; Windows and
-Linux produce `dist/nexrad-viewer` with the platform's executable suffix where
-applicable.
-PyInstaller builds are platform-specific, so each target must be built on its
-target operating system.
+On macOS this produces `dist/NEXRAD Viewer.app`; Windows and Linux produce a
+platform executable. Each target must be built on its target operating
+system.
 
-When the checkout has a `data/` directory, the default build embeds it for a
-self-contained read-only dataset. A smaller application can use an external
-dataset:
+When the checkout contains `data/`, the default build embeds it. To keep a
+large national dataset external:
 
 ```bash
 nexrad-viewer-build --without-data
 nexrad-viewer-desktop --data-root /path/to/radar
 ```
 
-The frozen application never writes into its bundle or PyInstaller extraction
-directory. GIF results persist under the operating system's application-data
-directory:
+The frozen app writes results only to the platform application-data folder,
+never into its bundle. Sigvue's fullscreen control toggles the native window
+in desktop mode and browser fullscreen in browser mode.
 
-- macOS: `~/Library/Application Support/NEXRAD Viewer/outputs`
-- Windows: `%LOCALAPPDATA%\NEXRAD Viewer\outputs`
-- Linux: `$XDG_DATA_HOME/nexrad-viewer/outputs`
-
-pywebview uses the operating system's native web renderer, while the existing
-Sigvue HTTP application remains the only UI implementation. Sigvue's existing
-fullscreen button also remains the only fullscreen control: in the desktop
-application it toggles the native window, while in an ordinary browser it
-continues to use browser fullscreen. See the
-[pywebview usage guide](https://pywebview.flowrl.com/guide/usage.html) and
-[freezing guide](https://pywebview.flowrl.com/guide/freezing).
-
-## Test
+## Test and package
 
 ```bash
 python -m pip install -e ".[test,release]"
@@ -186,6 +214,3 @@ python -m pytest -q
 python -m build
 python -m twine check dist/*
 ```
-
-The source dataset is NOAA NEXRAD Open Data distributed through the NOAA Open
-Data Dissemination program. NOAA requests attribution when the data is used.

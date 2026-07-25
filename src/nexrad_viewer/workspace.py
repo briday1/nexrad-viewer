@@ -72,6 +72,7 @@ def create_reader(root: str | Path):
 
 
 def create_workspace(config) -> Workspace:
+    """Create the date-folder-preserving individual-site workspace."""
     values = WorkspaceConfig(config)
     return Workspace(
         identifier="weather-radar",
@@ -85,7 +86,6 @@ def create_workspace(config) -> Workspace:
         view=view,
         batch=NexradGifBatch(
             values.path("output_root"),
-            radius_km=values.floating("gif_radius_km", 120.0),
             frame_duration_ms=values.integer(
                 "gif_frame_duration_ms",
                 200,
@@ -94,7 +94,7 @@ def create_workspace(config) -> Workspace:
         category="weather radar",
         tags=("NOAA", "NEXRAD", "Level III", "base reflectivity"),
         discovery_columns=NEXRAD_DISCOVERY_COLUMNS,
-        flatten_discovery=True,
+        flatten_discovery=False,
     )
 
 

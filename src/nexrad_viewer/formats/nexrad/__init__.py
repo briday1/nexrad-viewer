@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections import defaultdict
 from pathlib import Path
 
@@ -61,7 +62,15 @@ def discover_sequences(
         list[NexradLevel3Header],
     ] = defaultdict(list)
     for path in discover(root, pattern=pattern, recursive=recursive):
-        header = inspect(path)
+        try:
+            header = inspect(path)
+        except (OSError, ValueError) as error:
+            warnings.warn(
+                f"Skipping unreadable NEXRAD file {path}: {error}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
         groups[(path.parent, header.radar_id, header.product_id)].append(header)
     return tuple(
         NexradLevel3Sequence(

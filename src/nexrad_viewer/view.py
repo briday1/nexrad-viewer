@@ -141,19 +141,21 @@ def view(
     display_range = float(
         ui.select(
             "weather_radar_ppi_range_km",
-            label="PPI display radius (km)",
+            label="Maximum radar radius (km)",
             default=120,
             options=(60, 120, 230, round(maximum_range, 2)),
-            group="Plan-position display",
+            group="Map display",
         )
     )
     display_pixels = int(
-        ui.select(
+        ui.number(
             "weather_radar_ppi_pixels",
-            label="PPI render size",
-            default=512,
-            options=(256, 512, 768),
-            group="Plan-position display",
+            label="Current viewport source width",
+            default=1200,
+            minimum=128,
+            maximum=8192,
+            step=128,
+            group="Map display",
         )
     )
     colormap = ui.colormap(
@@ -161,32 +163,46 @@ def view(
         label="Colormap",
         default="Portland",
         options=REFLECTIVITY_COLORMAPS,
-        group="Plan-position display",
+        group="Map display",
     )
     render_east_pixels = int(
-        ui.select(
+        ui.number(
             "weather_radar_render_east_pixels",
             label="Render resolution E/W (pixels)",
             default=256,
-            options=(128, 256, 512, 768),
+            minimum=128,
+            maximum=4096,
+            step=64,
             group="Raster rendering details",
         )
     )
     render_north_pixels = int(
-        ui.select(
+        ui.number(
             "weather_radar_render_north_pixels",
             label="Render resolution N/S (pixels)",
             default=256,
-            options=(128, 256, 512, 768),
+            minimum=128,
+            maximum=2160,
+            step=64,
             group="Raster rendering details",
         )
+    )
+    progressive = ui.toggle(
+        "weather_radar_progressive_rendering",
+        label="Progressive rendering",
+        default=True,
+        group="Raster rendering details",
     )
     ui.stat(
         "PPI rendering",
         (
-            f"{display_pixels:,} × {display_pixels:,} source → "
-            f"{render_east_pixels:,} E/W × "
-            f"{render_north_pixels:,} N/S raster · max"
+            f"{display_pixels:,} × {display_pixels:,} source"
+            + (
+                f" → {render_east_pixels:,} E/W × "
+                f"{render_north_pixels:,} N/S raster · max"
+                if progressive
+                else " · progressive rendering off"
+            )
         ),
     )
     with ui.tab("Plan Position", columns=(0.22, 0.78)):
@@ -195,7 +211,10 @@ def view(
                 "weather_radar_colormap",
                 "weather_radar_ppi_range_km",
                 "weather_radar_ppi_pixels",
-                label="PPI display",
+                "weather_radar_progressive_rendering",
+                "weather_radar_render_east_pixels",
+                "weather_radar_render_north_pixels",
+                label="Map display",
             )
         ui.plot(
             lambda: ppi_figure(
@@ -206,6 +225,7 @@ def view(
                 theme=ui.theme,
                 render_east_pixels=render_east_pixels,
                 render_north_pixels=render_north_pixels,
+                progressive=progressive,
                 viewport=ui.plot_viewport("weather-radar-ppi"),
             ),
             key="weather-radar-ppi",

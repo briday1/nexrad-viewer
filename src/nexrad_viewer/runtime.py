@@ -75,18 +75,34 @@ subtitle = "Exact Level III base-reflectivity sequences"
 
 [[workspaces]]
 use = "nexrad_viewer.workspace:create_workspace"
-id = "nexrad"
-name = "NEXRAD Base Reflectivity"
-flatten_discovery = true
-description = "Browse and play native NOAA NEXRAD Level III scan sequences."
+id = "nexrad-sites"
+name = "Individual Radar Sites"
+flatten_discovery = false
+description = "Browse date folders, then play native NOAA NEXRAD Level III site sequences."
 category = "weather radar"
-tags = ["NOAA", "NEXRAD", "Level III", "reflectivity", "real data"]
+tags = ["NOAA", "NEXRAD", "Level III", "sites", "reflectivity", "real data"]
 
 [workspaces.config]
 data_root = {json.dumps(str(data_root.expanduser().resolve()))}
 output_root = {json.dumps(str(output_root.expanduser().resolve()))}
-gif_radius_km = 120.0
 gif_frame_duration_ms = 200
+
+[[workspaces]]
+use = "nexrad_viewer.national.workspace:create_workspace"
+id = "nexrad-national"
+name = "CONUS Radar Mosaic"
+flatten_discovery = true
+description = "View each date folder as synchronized national reflectivity frames."
+category = "weather radar"
+tags = ["NOAA", "NEXRAD", "Level III", "CONUS", "mosaic", "real data"]
+
+[workspaces.config]
+data_root = {json.dumps(str(data_root.expanduser().resolve()))}
+output_root = {json.dumps(str(output_root.expanduser().resolve()))}
+national_frame_interval_minutes = 60.0
+national_alignment_tolerance_minutes = 30.0
+national_gif_width = 1200
+national_gif_frame_duration_ms = 250
 """
 
 

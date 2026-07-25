@@ -1,14 +1,16 @@
-"""Durable full-resolution GIF rendering for NEXRAD sequences."""
+"""Durable GIF rendering from the actual interactive Plan Position plot."""
 
 from __future__ import annotations
 
 import re
-from math import ceil, isfinite
+from io import BytesIO
+from math import ceil
 from pathlib import Path
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+import plotly.io as pio
+from PIL import Image
 from sigvue import (
     Batch,
     BatchDestination,
@@ -18,21 +20,14 @@ from sigvue import (
     DataResource,
 )
 
-from .analysis import cartesian_display_grid
 from .formats.nexrad import NexradLevel3Sequence, open_scan
-from .plots import NEXRAD_COLORSCALE
+from .plots import NEXRAD_COLORSCALE, ppi_figure
 
 RENDER_GIF = "render-full-resolution-gif"
 
 
-def _font(size: int) -> ImageFont.ImageFont:
-    try:
-        return ImageFont.truetype("DejaVuSans.ttf", size=size)
-    except OSError:
-        return ImageFont.load_default()
-
-
 def _palette() -> list[int]:
+    """Retain one stable dBZ palette for the national batch renderer."""
     locations = np.asarray(
         [location for location, _ in NEXRAD_COLORSCALE],
         dtype=np.float64,
@@ -64,11 +59,27 @@ GIF_PALETTE = _palette()
 
 def full_resolution_pixels(
     sequence: NexradLevel3Sequence,
-    radius_km: float,
+    radius_km: float | None = None,
 ) -> int:
-    """Match Cartesian pixel spacing to the native range-gate spacing."""
-    first = open_scan(sequence.headers[0].source_path)
-    pixels = max(32, ceil((2.0 * radius_km) / first.gate_size_km))
+    """Match map source spacing to native range-gate spacing."""
+    scans = tuple(open_scan(header.source_path) for header in sequence.headers)
+    pixels = max(
+        128,
+        *(
+            ceil(
+                (
+                    2.0
+                    * (
+                        float(scan.ground_range_edges_km[-1])
+                        if radius_km is None
+                        else float(radius_km)
+                    )
+                )
+                / scan.gate_size_km
+            )
+            for scan in scans
+        ),
+    )
     return pixels + pixels % 2
 
 
@@ -76,147 +87,103 @@ def _frame(
     sequence: NexradLevel3Sequence,
     index: int,
     *,
-    radius_km: float,
     pixels: int,
 ) -> Image.Image:
+    """Render exactly the dark Portland Plan Position figure."""
     scan = open_scan(sequence.headers[index].source_path)
-    if radius_km > float(scan.ground_range_edges_km[-1]):
-        raise ValueError(
-            f"GIF radius {radius_km:g} km exceeds scan coverage "
-            f"{scan.ground_range_edges_km[-1]:g} km"
-        )
-    _, _, dbz = cartesian_display_grid(
+    radius = float(scan.ground_range_edges_km[-1])
+    figure = ppi_figure(
         scan,
-        maximum_range_km=radius_km,
+        maximum_range_km=radius,
         pixels=pixels,
+        colormap="Portland",
+        theme="dark",
+        render_east_pixels=pixels,
+        render_north_pixels=pixels,
+        progressive=False,
     )
-    finite = np.isfinite(dbz)
-    indexes = np.zeros(dbz.shape, dtype=np.uint8)
-    indexes[finite] = 1 + np.rint(
-        np.clip((dbz[finite] + 20.0) / 95.0, 0.0, 1.0) * 253.0
-    ).astype(np.uint8)
-    map_image = Image.fromarray(np.flipud(indexes), mode="P")
-    map_image.putpalette(GIF_PALETTE)
-
-    header_height = 68
-    canvas = Image.new("P", (pixels, pixels + header_height), color=0)
-    canvas.putpalette(GIF_PALETTE)
-    canvas.paste(map_image, (0, header_height))
-    draw = ImageDraw.Draw(canvas)
-    title_font = _font(max(13, min(22, pixels // 42)))
-    detail_font = _font(max(11, min(16, pixels // 56)))
-    draw.text(
-        (12, 7),
-        (
-            f"{scan.header.radar_id} {scan.header.product_id} "
-            f"{scan.header.scan_time:%Y-%m-%d %H:%M:%S} UTC"
-        ),
-        fill=255,
-        font=title_font,
+    # Account for the plot's title/margins/colorbar so the map body retains
+    # approximately one output pixel per native range-gate spacing.
+    payload = pio.to_image(
+        figure,
+        format="png",
+        width=pixels + 94,
+        height=pixels + 70,
+        scale=1,
     )
-    draw.text(
-        (12, 36),
-        (
-            f"Frame {index + 1}/{sequence.scan_count} · "
-            f"radius {radius_km:g} km · -20 to 75 dBZ"
-        ),
-        fill=255,
-        font=detail_font,
-    )
-
-    center_x = (scan.i_center_km + radius_km) / (2.0 * radius_km) * pixels
-    center_y = (radius_km - scan.j_center_km) / (
-        2.0 * radius_km
-    ) * pixels + header_height
-    line_width = max(1, pixels // 640)
-    for fraction in (0.25, 0.5, 0.75, 1.0):
-        ring = fraction * pixels / 2.0
-        draw.ellipse(
-            (
-                center_x - ring,
-                center_y - ring,
-                center_x + ring,
-                center_y + ring,
-            ),
-            outline=255,
-            width=line_width,
-        )
-    marker = max(3, pixels // 180)
-    draw.ellipse(
-        (
-            center_x - marker,
-            center_y - marker,
-            center_x + marker,
-            center_y + marker,
-        ),
-        fill=255,
-    )
-    # Keep identical meteorological frames distinct in the GIF timeline.
-    canvas.putpixel((pixels - 1, header_height - 1), 1 + index % 254)
-    return canvas
+    with Image.open(BytesIO(payload)) as rendered:
+        frame = rendered.convert("RGB")
+        frame.load()
+    return frame
 
 
 def render_sequence_gif(
     sequence: NexradLevel3Sequence,
     target: str | Path,
     *,
-    radius_km: float,
     frame_duration_ms: int,
 ) -> Path:
-    """Render every scan without viewport raster reduction and write atomically."""
+    """Render every scan through the real Plotly view and write atomically."""
     destination = Path(target).expanduser().resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
-    pixels = full_resolution_pixels(sequence, radius_km)
-    frames = [
-        _frame(
-            sequence,
-            index,
-            radius_km=radius_km,
-            pixels=pixels,
-        )
-        for index in range(sequence.scan_count)
-    ]
-    with NamedTemporaryFile(
+    pixels = full_resolution_pixels(sequence)
+    with TemporaryDirectory(
         dir=destination.parent,
-        prefix=f".{destination.name}.",
-        suffix=".gif",
-        delete=False,
-    ) as stream:
-        temporary = Path(stream.name)
-    try:
-        frames[0].save(
-            temporary,
-            format="GIF",
-            save_all=True,
-            append_images=frames[1:],
-            duration=frame_duration_ms,
-            loop=0,
-            disposal=2,
-            optimize=False,
-        )
-        temporary.replace(destination)
-    finally:
-        temporary.unlink(missing_ok=True)
+        prefix=f".{destination.stem}-frames-",
+    ) as frame_directory:
+        frame_paths: list[Path] = []
+        for index in range(sequence.scan_count):
+            frame = _frame(sequence, index, pixels=pixels)
+            frame_path = Path(frame_directory) / f"{index:04d}.png"
+            frame.save(frame_path, format="PNG")
+            frame.close()
+            frame_paths.append(frame_path)
+        frames = [Image.open(path) for path in frame_paths]
+        with NamedTemporaryFile(
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".gif",
+            delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+        try:
+            frames[0].save(
+                temporary,
+                format="GIF",
+                save_all=True,
+                append_images=frames[1:],
+                duration=frame_duration_ms,
+                loop=0,
+                disposal=2,
+                optimize=False,
+            )
+            temporary.replace(destination)
+        finally:
+            for frame in frames:
+                frame.close()
+            temporary.unlink(missing_ok=True)
     return destination
 
 
 class NexradGifBatch(Batch[NexradLevel3Sequence]):
-    """Item and workspace actions for deterministic PPI animations."""
+    """Actual Plan Position plot animations at native-gate-scale resolution."""
 
-    item_actions = (CapabilityChoice(RENDER_GIF, "Render full-resolution GIF"),)
+    item_actions = (
+        CapabilityChoice(RENDER_GIF, "Render full-width Plan Position GIF"),
+    )
     workspace_actions = (
-        CapabilityChoice(RENDER_GIF, "Render all full-resolution GIFs"),
+        CapabilityChoice(
+            RENDER_GIF,
+            "Render all full-width Plan Position GIFs",
+        ),
     )
 
     def __init__(
         self,
         output_root: str | Path,
         *,
-        radius_km: float,
         frame_duration_ms: int,
     ) -> None:
-        if not isfinite(radius_km) or radius_km <= 0:
-            raise ValueError("GIF radius must be finite and positive")
         if (
             isinstance(frame_duration_ms, bool)
             or not isinstance(frame_duration_ms, int)
@@ -224,7 +191,6 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
         ):
             raise ValueError("GIF frame duration must be an integer of at least 20 ms")
         self.output_root = Path(output_root).expanduser().resolve()
-        self.radius_km = float(radius_km)
         self.frame_duration_ms = frame_duration_ms
 
     def _filename(self, resource: DataResource) -> str:
@@ -233,8 +199,10 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
             "-",
             resource.identifier.lower(),
         ).strip("-")
-        radius = f"{self.radius_km:g}".replace(".", "p")
-        return f"{slug}-ppi-{radius}km-{self.frame_duration_ms}ms.gif"
+        return (
+            f"{slug}-plan-position-fullwidth-portland-dark-"
+            f"{self.frame_duration_ms}ms.gif"
+        )
 
     def item_destination(
         self,
@@ -244,7 +212,7 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
         return BatchDestination(
             self.output_root,
             (self._filename(resource),),
-            "Full-resolution NEXRAD GIF is ready",
+            "Full-width Plan Position GIF is ready",
         )
 
     def workspace_destination(
@@ -255,7 +223,7 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
         return BatchDestination(
             self.output_root,
             tuple(self._filename(resource) for resource in resources),
-            "All full-resolution NEXRAD GIFs are ready",
+            "All full-width Plan Position GIFs are ready",
         )
 
     def run_item(
@@ -268,12 +236,11 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
         target = render_sequence_gif(
             source_data,
             directory / self._filename(resource),
-            radius_km=self.radius_km,
             frame_duration_ms=self.frame_duration_ms,
         )
         return BatchResult(
             (target,),
-            "Rendered full-resolution NEXRAD GIF",
+            "Rendered full-width Plan Position GIF",
         )
 
     def run_workspace(
@@ -287,18 +254,18 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
             render_sequence_gif(
                 open_resource(resource),
                 directory / self._filename(resource),
-                radius_km=self.radius_km,
                 frame_duration_ms=self.frame_duration_ms,
             )
             for resource in resources
         )
         return BatchResult(
             outputs,
-            f"Rendered {len(outputs)} full-resolution NEXRAD GIFs",
+            f"Rendered {len(outputs)} full-width Plan Position GIFs",
         )
 
 
 __all__ = [
+    "GIF_PALETTE",
     "RENDER_GIF",
     "NexradGifBatch",
     "full_resolution_pixels",

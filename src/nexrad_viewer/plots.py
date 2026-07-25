@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+from math import cos, radians
+
 import plotly.graph_objects as go
 from plotly import colors as plotly_colors
 from sigvue import add_viewport_heatmap
 
 from .analysis import (
-    cartesian_display_grid,
+    EARTH_KM_PER_DEGREE,
+    geographic_display_grid,
     measured_histogram,
     sequence_histogram_count_upper,
 )
 from .formats.nexrad import NexradLevel3Radial, NexradSequenceSelection
+from .national.geography import boundary_trace_coordinates
 from .style import COLORS, style_plotly
 
 NEXRAD_COLORSCALE = (
@@ -68,65 +72,121 @@ def ppi_figure(
     theme: str,
     render_east_pixels: int = 256,
     render_north_pixels: int = 256,
+    progressive: bool = True,
     viewport: dict[str, object] | None = None,
 ) -> go.Figure:
     if colormap not in REFLECTIVITY_COLORMAPS:
         raise ValueError(f"Unknown reflectivity colormap: {colormap}")
-    x, y, dbz = cartesian_display_grid(
+    latitude = scan.header.latitude_deg
+    longitude = scan.header.longitude_deg
+    latitude_span = maximum_range_km / EARTH_KM_PER_DEGREE
+    longitude_span = maximum_range_km / (EARTH_KM_PER_DEGREE * cos(radians(latitude)))
+    base_bounds = (
+        longitude - longitude_span,
+        longitude + longitude_span,
+        latitude - latitude_span,
+        latitude + latitude_span,
+    )
+
+    def requested(axis: str, fallback: tuple[float, float]):
+        if not isinstance(viewport, dict):
+            return fallback
+        state = viewport.get(axis)
+        values = state.get("range") if isinstance(state, dict) else None
+        if (
+            not isinstance(values, (tuple, list))
+            or len(values) != 2
+            or not all(isinstance(value, (int, float)) for value in values)
+        ):
+            return fallback
+        return tuple(sorted((float(values[0]), float(values[1]))))
+
+    west, east, south, north = base_bounds
+    left, right = requested("xaxis", (west, east))
+    bottom, top = requested("yaxis", (south, north))
+    left, right = max(west, left), min(east, right)
+    bottom, top = max(south, bottom), min(north, top)
+    bounds = (
+        (left, right, bottom, top) if left < right and bottom < top else base_bounds
+    )
+    source_height = max(
+        32,
+        round(pixels * render_north_pixels / render_east_pixels),
+    )
+    longitudes, latitudes, dbz = geographic_display_grid(
         scan,
+        bounds=bounds,
+        width=pixels,
+        height=source_height,
         maximum_range_km=maximum_range_km,
-        pixels=pixels,
     )
     figure = go.Figure()
     figure.update_xaxes(
-        range=[-maximum_range_km, maximum_range_km],
+        range=[bounds[0], bounds[1]],
         constrain="domain",
     )
     figure.update_yaxes(
-        range=[-maximum_range_km, maximum_range_km],
+        range=[bounds[2], bounds[3]],
         scaleanchor="x",
-        scaleratio=1,
+        scaleratio=1 / cos(radians(latitude)),
         constrain="domain",
     )
-    add_viewport_heatmap(
-        figure,
-        viewport=viewport,
-        render_width=render_east_pixels,
-        render_height=render_north_pixels,
-        aggregation="max",
-        x=x,
-        y=y,
-        z=dbz,
-        zmin=-20,
-        zmax=75,
-        colorscale=(NEXRAD_COLORSCALE if colormap == "NEXRAD" else colormap),
-        colorbar={
+    colorscale = NEXRAD_COLORSCALE if colormap == "NEXRAD" else colormap
+    heatmap_options = {
+        "x": longitudes,
+        "y": latitudes,
+        "z": dbz,
+        "zmin": -20,
+        "zmax": 75,
+        "colorscale": colorscale,
+        "colorbar": {
             "title": {"text": "Reflectivity<br>(dBZ)"},
             "len": 0.72,
             "thickness": 14,
         },
-        hovertemplate=(
-            "East: %{x:.1f} km<br>North: %{y:.1f} km"
+        "hovertemplate": (
+            "Longitude: %{x:.3f}°<br>Latitude: %{y:.3f}°"
             "<br>Reflectivity: %{z:.1f} dBZ<extra></extra>"
         ),
-        zsmooth=False,
+        "zsmooth": False,
+    }
+    if progressive:
+        add_viewport_heatmap(
+            figure,
+            viewport=viewport,
+            render_width=render_east_pixels,
+            render_height=render_north_pixels,
+            aggregation="max",
+            **heatmap_options,
+        )
+    else:
+        figure.add_trace(go.Heatmap(**heatmap_options, name="Reflectivity"))
+    boundary_lon, boundary_lat = boundary_trace_coordinates()
+    map_line = "rgba(232,241,243,0.72)" if theme == "dark" else "rgba(20,36,45,0.68)"
+    figure.add_trace(
+        go.Scatter(
+            x=boundary_lon,
+            y=boundary_lat,
+            mode="lines",
+            line={"color": map_line, "width": 0.8},
+            hoverinfo="skip",
+            showlegend=False,
+        )
     )
     figure.add_trace(
         go.Scatter(
-            x=(scan.i_center_km,),
-            y=(scan.j_center_km,),
+            x=(longitude,),
+            y=(latitude,),
             mode="markers",
             marker={
-                "color": "white",
+                "color": "#ffd84d",
                 "line": {"color": "black", "width": 1},
-                "size": 8,
+                "size": 9,
             },
             name=scan.header.radar_id,
             hovertemplate=f"{scan.header.radar_id}<extra></extra>",
         )
     )
-    scale_km = max(1.0, round(maximum_range_km / 4.0))
-    scale_fraction = scale_km / (2.0 * maximum_range_km)
     styled = style_plotly(
         figure,
         title=(
@@ -135,10 +195,6 @@ def ppi_figure(
         ),
         theme=theme,
         boxed_axes=False,
-    )
-    ink = "#e7f1f3" if theme == "dark" else "#13212b"
-    legend_background = (
-        "rgba(16,37,45,0.76)" if theme == "dark" else "rgba(255,255,255,0.80)"
     )
     styled.update_xaxes(
         title_text=None,
@@ -159,87 +215,7 @@ def ppi_figure(
     styled.update_layout(
         hovermode="closest",
         margin={"l": 18, "r": 76, "t": 52, "b": 18},
-        shapes=[
-            {
-                "type": "line",
-                "xref": "paper",
-                "yref": "paper",
-                "x0": 0.055,
-                "x1": 0.055,
-                "y0": 0.055,
-                "y1": 0.12,
-                "line": {"color": ink, "width": 2},
-            },
-            {
-                "type": "line",
-                "xref": "paper",
-                "yref": "paper",
-                "x0": 0.055,
-                "x1": 0.12,
-                "y0": 0.055,
-                "y1": 0.055,
-                "line": {"color": ink, "width": 2},
-            },
-            {
-                "type": "path",
-                "xref": "paper",
-                "yref": "paper",
-                "path": "M 0.055 0.13 L 0.048 0.117 L 0.062 0.117 Z",
-                "line": {"color": ink, "width": 1},
-                "fillcolor": ink,
-            },
-            {
-                "type": "path",
-                "xref": "paper",
-                "yref": "paper",
-                "path": "M 0.13 0.055 L 0.117 0.048 L 0.117 0.062 Z",
-                "line": {"color": ink, "width": 1},
-                "fillcolor": ink,
-            },
-            # A scale bar whose paper length corresponds to the full-view range.
-            {
-                "type": "line",
-                "xref": "paper",
-                "yref": "paper",
-                "x0": 0.68,
-                "x1": 0.68 + scale_fraction,
-                "y0": 0.07,
-                "y1": 0.07,
-                "line": {"color": ink, "width": 4},
-            },
-        ],
-        annotations=[
-            {
-                "xref": "paper",
-                "yref": "paper",
-                "x": 0.055,
-                "y": 0.145,
-                "text": "<b>N</b>",
-                "showarrow": False,
-                "font": {"color": ink, "size": 11},
-                "bgcolor": legend_background,
-            },
-            {
-                "xref": "paper",
-                "yref": "paper",
-                "x": 0.145,
-                "y": 0.055,
-                "text": "<b>E</b>",
-                "showarrow": False,
-                "font": {"color": ink, "size": 11},
-                "bgcolor": legend_background,
-            },
-            {
-                "xref": "paper",
-                "yref": "paper",
-                "x": 0.68 + scale_fraction / 2,
-                "y": 0.085,
-                "text": f"<b>{scale_km:g} km</b>",
-                "showarrow": False,
-                "font": {"color": ink, "size": 11},
-                "bgcolor": legend_background,
-            },
-        ],
+        uirevision=(f"weather-radar-map:{scan.header.radar_id}:{maximum_range_km:g}"),
     )
     return styled
 

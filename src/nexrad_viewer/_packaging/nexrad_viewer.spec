@@ -19,7 +19,10 @@ checkout_root = source_root.parent
 
 datas = []
 binaries = []
-hiddenimports = ["nexrad_viewer.workspace"]
+hiddenimports = [
+    "nexrad_viewer.workspace",
+    "nexrad_viewer.national.workspace",
+]
 
 for distribution in (
     "nexrad-viewer",
@@ -28,6 +31,7 @@ for distribution in (
     "numpy",
     "pillow",
     "certifi",
+    "kaleido",
     "pywebview",
 ):
     try:

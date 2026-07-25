@@ -61,14 +61,19 @@ def test_runtime_profile_uses_explicit_durable_paths():
             payload = tomllib.loads(profile_path.read_text(encoding="utf-8"))
 
         assert profile.title == "NOAA NEXRAD Viewer"
-        assert len(profile.workspaces) == 1
+        assert len(profile.workspaces) == 2
         workspace = profile.workspaces[0]
         assert workspace.module_name == "nexrad_viewer.workspace"
         assert workspace.attribute == "create_workspace"
-        assert workspace.flatten_discovery is True
+        assert workspace.flatten_discovery is False
         assert Path(workspace.configuration["data_root"]) == data.resolve()
         assert Path(workspace.configuration["output_root"]) == output.resolve()
-        assert payload["workspaces"][0]["id"] == "nexrad"
+        national = profile.workspaces[1]
+        assert national.module_name == "nexrad_viewer.national.workspace"
+        assert national.attribute == "create_workspace"
+        assert national.flatten_discovery is True
+        assert payload["workspaces"][0]["id"] == "nexrad-sites"
+        assert payload["workspaces"][1]["id"] == "nexrad-national"
         assert output.is_dir()
         assert not profile_path.exists()
 
@@ -191,7 +196,7 @@ def test_package_declares_cli_desktop_and_build_entry_points():
     assert {
         requirement.split(">=", 1)[0]
         for requirement in payload["project"]["dependencies"]
-    } == {"numpy", "pillow", "plotly", "sigvue"}
+    } == {"certifi", "kaleido", "numpy", "pillow", "plotly", "sigvue"}
     assert {"pyinstaller", "pywebview"} == {
         requirement.split(">=", 1)[0]
         for requirement in payload["project"]["optional-dependencies"]["desktop"]

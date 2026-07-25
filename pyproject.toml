@@ -4,15 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nexrad-viewer"
-version = "0.1.0"
+version = "0.2.0"
 description = "A focused NOAA NEXRAD Level III browser built with Sigvue"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "certifi>=2023.7",
+    "kaleido>=1.0",
     "numpy>=1.24",
     "pillow>=9.4",
     "plotly>=6.1.1",
-    "sigvue>=2026.45",
+    "sigvue>=2026.53",
 ]
 
 [project.optional-dependencies]
@@ -26,7 +28,8 @@ nexrad-viewer-desktop = "nexrad_viewer.desktop:main"
 nexrad-viewer-build = "nexrad_viewer._packaging.build:main"
 
 [project.entry-points."sigvue.workspaces"]
-nexrad-viewer = "nexrad_viewer.workspace:create_workspace"
+nexrad-site-viewer = "nexrad_viewer.workspace:create_workspace"
+nexrad-national-viewer = "nexrad_viewer.national.workspace:create_workspace"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -35,7 +38,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-nexrad_viewer = ["_packaging/*.spec"]
+nexrad_viewer = ["_packaging/*.spec", "national/*.geojson.gz"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

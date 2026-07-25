@@ -95,10 +95,22 @@ def level3_sequence_reader(
 ) -> Reader[NexradLevel3Sequence, NexradLevel3Sequence]:
     """Group chronological scans by directory, radar, and product."""
     directory = Path(root).expanduser().resolve()
+
+    def revision(sequence: NexradLevel3Sequence):
+        return tuple(
+            (
+                str(header.source_path),
+                header.file_size_bytes,
+                header.source_path.stat().st_mtime_ns,
+            )
+            for header in sequence.headers
+        )
+
     return Reader(
         lambda: discover_sequences(directory),
         lambda sequence: sequence,
         describe=lambda sequence: _describe_sequence(directory, sequence),
+        revision=revision,
     )
 
 

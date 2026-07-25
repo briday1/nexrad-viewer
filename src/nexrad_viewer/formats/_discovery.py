@@ -18,13 +18,24 @@ def discover_files(
     if not requested:
         raise ValueError("At least one discovery pattern is required")
     match = directory.rglob if recursive else directory.glob
+
+    def visible(path: Path) -> bool:
+        try:
+            relative = path.relative_to(directory)
+        except ValueError:
+            return False
+        return all(
+            not part.startswith(".") and not part.endswith(".part")
+            for part in relative.parts
+        )
+
     return tuple(
         sorted(
             {
                 path.resolve()
                 for pattern in requested
                 for path in match(pattern)
-                if path.is_file()
+                if path.is_file() and visible(path)
             },
             key=lambda path: path.as_posix(),
         )
