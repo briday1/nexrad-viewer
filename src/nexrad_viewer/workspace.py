@@ -94,6 +94,7 @@ def create_workspace(config) -> Workspace:
         category="weather radar",
         tags=("NOAA", "NEXRAD", "Level III", "base reflectivity"),
         discovery_columns=NEXRAD_DISCOVERY_COLUMNS,
+        flatten_discovery=True,
     )
 
 

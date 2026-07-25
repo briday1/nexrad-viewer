@@ -60,8 +60,10 @@ sigvue --config browser.toml
 ```
 
 Open <http://127.0.0.1:8000>. Because `browser.toml` contains exactly one
-workspace, the root page is the NEXRAD sequence browser. Selecting a sequence
-opens segmented scan playback with:
+workspace, the root page is the NEXRAD sequence browser. Its ten collection
+folders are deliberately flattened into ten sequence rows without changing
+their identifiers or source locations. Selecting a sequence opens segmented
+scan playback with:
 
 - previous, next, press-and-hold, automatic playback, looping, and step size;
 - a progressive plan-position reflectivity display;

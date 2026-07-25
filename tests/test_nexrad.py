@@ -324,6 +324,8 @@ class NexradLevel3ReaderTests(unittest.TestCase):
                 frame_duration = animation.info["duration"]
 
         self.assertEqual((0, 2), tuple(histogram.layout.yaxis.range))
+        self.assertTrue(workspace.flatten_discovery)
+        self.assertEqual((), resource.navigation_path)
         self.assertEqual(1, len(destination.files))
         self.assertEqual(destination.files[0], result.files[0].name)
         self.assertEqual(destination.files, workspace_destination.files)
