@@ -1,0 +1,15 @@
+[browser]
+title = "NOAA NEXRAD Viewer"
+subtitle = "Exact Level III base-reflectivity sequences"
+
+[[workspaces]]
+use = "nexrad-viewer"
+path = "."
+id = "nexrad"
+name = "NEXRAD Base Reflectivity"
+description = "Browse and play native NOAA NEXRAD Level III scan sequences."
+category = "weather radar"
+tags = ["NOAA", "NEXRAD", "Level III", "reflectivity", "real data"]
+
+[workspaces.config]
+data_root = "./data"
