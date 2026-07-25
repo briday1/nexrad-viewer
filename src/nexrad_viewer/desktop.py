@@ -62,10 +62,11 @@ _NATIVE_FULLSCREEN_SCRIPT = r"""
 class _DesktopApi:
     """Small JS bridge for native-only window behavior."""
 
-    def __init__(self) -> None:
+    def __init__(self, folder_dialog_type: Any) -> None:
         self._window: Any | None = None
         self._fullscreen = False
         self._lock = Lock()
+        self._folder_dialog_type = folder_dialog_type
 
     def _bind(self, window: Any) -> None:
         self._window = window
@@ -88,9 +89,7 @@ class _DesktopApi:
             window = self._window
         if window is None:
             return None
-        from webview import FileDialog
-
-        selected = window.create_file_dialog(FileDialog.FOLDER)
+        selected = window.create_file_dialog(self._folder_dialog_type)
         return str(selected[0]) if selected else None
 
     def _restored(self) -> None:
@@ -147,7 +146,7 @@ def main() -> None:
         )
         thread.start()
         url = f"http://127.0.0.1:{server.server_port}"
-        desktop_api = _DesktopApi()
+        desktop_api = _DesktopApi(webview.FileDialog.FOLDER)
         window = webview.create_window(
             APPLICATION_NAME,
             url,
