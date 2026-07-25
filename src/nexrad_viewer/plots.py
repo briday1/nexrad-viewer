@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import numpy as np
 import plotly.graph_objects as go
 from plotly import colors as plotly_colors
 from sigvue import add_viewport_heatmap
 
-from .formats.nexrad import (
-    FIRST_MEASURED_CODE,
-    NexradLevel3Radial,
-    NexradSequenceSelection,
+from .analysis import (
+    cartesian_display_grid,
+    measured_histogram,
+    sequence_histogram_count_upper,
 )
+from .formats.nexrad import NexradLevel3Radial, NexradSequenceSelection
 from .style import COLORS, style_plotly
 
 
@@ -60,57 +60,6 @@ REFLECTIVITY_COLORMAPS = (
 )
 
 
-def cartesian_display_grid(
-    scan: NexradLevel3Radial,
-    *,
-    maximum_range_km: float,
-    pixels: int,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Resample exact polar gates at Cartesian pixel centers for display only."""
-    if maximum_range_km <= 0 or pixels < 32:
-        raise ValueError("display range and pixel count must be positive")
-    edges = np.linspace(
-        -maximum_range_km,
-        maximum_range_km,
-        pixels + 1,
-        dtype=np.float64,
-    )
-    centers = (edges[:-1] + edges[1:]) / 2.0
-    x, y = np.meshgrid(centers, centers)
-    ground_range = np.hypot(x, y)
-    slant_range = ground_range / scan.ground_range_scale
-    azimuth = np.degrees(np.arctan2(x, y)) % 360.0
-
-    order = np.argsort(scan.azimuth_start_deg)
-    ordered_starts = scan.azimuth_start_deg[order]
-    position = np.searchsorted(ordered_starts, azimuth, side="right") - 1
-    position[position < 0] = len(order) - 1
-    radial = order[position]
-    angular_offset = (azimuth - scan.azimuth_start_deg[radial]) % 360.0
-    covered = angular_offset <= scan.azimuth_width_deg[radial] + 1e-6
-
-    gate = np.floor(
-        (slant_range - scan.first_range_bin * scan.gate_size_km) / scan.gate_size_km
-    ).astype(np.int32)
-    valid = (
-        covered
-        & (ground_range <= maximum_range_km)
-        & (gate >= 0)
-        & (gate < scan.range_bin_count)
-    )
-    safe_gate = np.clip(gate, 0, scan.range_bin_count - 1)
-    valid &= safe_gate < scan.radial_gate_counts[radial]
-    codes = scan.level_codes[radial, safe_gate]
-    measured = valid & (codes >= FIRST_MEASURED_CODE)
-    dbz = np.full((pixels, pixels), np.nan, dtype=np.float32)
-    dbz[measured] = (
-        scan.header.minimum_value_dbz
-        + (codes[measured].astype(np.float32) - FIRST_MEASURED_CODE)
-        * scan.header.value_increment_dbz
-    )
-    return centers, centers, dbz
-
-
 def ppi_figure(
     scan: NexradLevel3Radial,
     *,
@@ -138,6 +87,7 @@ def ppi_figure(
         range=[-maximum_range_km, maximum_range_km],
         scaleanchor="x",
         scaleratio=1,
+        constrain="domain",
     )
     add_viewport_heatmap(
         figure,
@@ -232,34 +182,15 @@ def histogram_figure(
     theme: str,
 ) -> go.Figure:
     scan = selection.scan
-    valid = scan.valid_gate_mask()
-    measured_codes = scan.level_codes[
-        valid & (scan.level_codes >= FIRST_MEASURED_CODE)
-    ]
-    code_counts = np.bincount(measured_codes, minlength=256)
-    present_codes = (
-        np.flatnonzero(code_counts[FIRST_MEASURED_CODE:])
-        + FIRST_MEASURED_CODE
-    )
-    histogram_dbz = (
-        scan.header.minimum_value_dbz
-        + (present_codes - FIRST_MEASURED_CODE)
-        * scan.header.value_increment_dbz
-    )
-    histogram_counts = code_counts[present_codes]
-    increment = scan.header.value_increment_dbz
-    measured_min = scan.header.minimum_value_dbz
-    measured_max = measured_min + (255 - FIRST_MEASURED_CODE) * increment
-    # A histogram bin can never contain more gates than the inflated packet
-    # contains bytes.  The sequence-wide maximum is therefore a conservative,
-    # metadata-only bound that remains identical while stepping through scans;
-    # importantly, it does not require eagerly decoding the entire sequence.
-    count_upper = max(
-        1,
-        max(
-            header.uncompressed_payload_bytes
-            for header in selection.sequence.headers
-        ),
+    (
+        histogram_dbz,
+        histogram_counts,
+        increment,
+        measured_min,
+        measured_max,
+    ) = measured_histogram(scan)
+    count_upper = sequence_histogram_count_upper(
+        selection.sequence,
     )
     figure = go.Figure(
         go.Bar(
@@ -302,7 +233,6 @@ def histogram_figure(
 __all__ = [
     "NEXRAD_COLORSCALE",
     "REFLECTIVITY_COLORMAPS",
-    "cartesian_display_grid",
     "histogram_figure",
     "ppi_figure",
 ]

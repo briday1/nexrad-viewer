@@ -13,3 +13,6 @@ tags = ["NOAA", "NEXRAD", "Level III", "reflectivity", "real data"]
 
 [workspaces.config]
 data_root = "./data"
+output_root = "./outputs"
+gif_radius_km = 120.0
+gif_frame_duration_ms = 200

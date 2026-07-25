@@ -8,7 +8,9 @@ import unittest
 from unittest.mock import patch
 
 import numpy as np
+from PIL import Image
 
+from nexrad_viewer.batch import RENDER_GIF
 from nexrad_viewer.download import (
     CASE_PREFIXES,
     DEFAULT_CASES,
@@ -25,6 +27,7 @@ from nexrad_viewer.reader import (
     level3_sequence_reader,
 )
 from nexrad_viewer.plots import ppi_figure
+from nexrad_viewer.workspace import create_workspace
 
 
 def _set_u16(message: bytearray, halfword: int, value: int) -> None:
@@ -272,11 +275,62 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         self.assertFalse(figure.layout.yaxis.showticklabels)
         self.assertEqual((-1.0, 1.0), tuple(figure.layout.xaxis.range))
         self.assertEqual((-1.0, 1.0), tuple(figure.layout.yaxis.range))
+        self.assertEqual("domain", figure.layout.xaxis.constrain)
+        self.assertEqual("domain", figure.layout.yaxis.constrain)
         self.assertEqual(5, len(figure.layout.shapes))
         self.assertEqual(
             ["<b>N</b>", "<b>E</b>", "<b>1 km</b>"],
             [annotation.text for annotation in figure.layout.annotations],
         )
+
+    def test_histogram_limit_is_exact_for_sequence_and_batch_renders_gif(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "outputs"
+            first = root / "TLX_N0B_2024_05_20_03_10_54"
+            second = root / "TLX_N0B_2024_05_20_03_20_54"
+            first.write_bytes(synthetic_n0b())
+            second.write_bytes(synthetic_n0b(scan_seconds=12_054))
+            workspace = create_workspace(
+                {
+                    "data_root": root,
+                    "output_root": output,
+                    "gif_radius_km": 0.5,
+                    "gif_frame_duration_ms": 100,
+                }
+            )
+            resource = workspace.discover_items()[0]
+            opened = workspace.open_item(resource.identifier)
+            histogram = opened.page.views[1].callback({})
+            destination = workspace.item_batch_destination(
+                resource.identifier,
+                RENDER_GIF,
+            )
+            result = workspace.run_item_batch(
+                resource.identifier,
+                RENDER_GIF,
+                output,
+            )
+            workspace_destination = workspace.workspace_batch_destination(
+                RENDER_GIF,
+            )
+            workspace_result = workspace.run_workspace_batch(
+                RENDER_GIF,
+                output,
+            )
+            with Image.open(result.files[0]) as animation:
+                frame_count = animation.n_frames
+                frame_size = animation.size
+                frame_duration = animation.info["duration"]
+
+        self.assertEqual((0, 2), tuple(histogram.layout.yaxis.range))
+        self.assertEqual(1, len(destination.files))
+        self.assertEqual(destination.files[0], result.files[0].name)
+        self.assertEqual(destination.files, workspace_destination.files)
+        self.assertEqual(result.files, workspace_result.files)
+        self.assertEqual(2, frame_count)
+        self.assertEqual((32, 100), frame_size)
+        self.assertEqual(100, frame_duration)
 
     def test_radial_byte_count_must_match_declared_gate_count(self):
         with TemporaryDirectory() as directory:

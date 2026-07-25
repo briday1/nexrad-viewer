@@ -7,6 +7,7 @@ from pathlib import Path
 from sigvue import Segment, Workspace
 from sigvue.helpers import WorkspaceConfig
 
+from .batch import NexradGifBatch
 from .formats.nexrad import (
     NexradLevel3Sequence,
     NexradSequenceSelection,
@@ -82,6 +83,14 @@ def create_workspace(config) -> Workspace:
         ),
         reader=create_reader(values.path("data_root")),
         view=view,
+        batch=NexradGifBatch(
+            values.path("output_root"),
+            radius_km=values.floating("gif_radius_km", 120.0),
+            frame_duration_ms=values.integer(
+                "gif_frame_duration_ms",
+                200,
+            ),
+        ),
         category="weather radar",
         tags=("NOAA", "NEXRAD", "Level III", "base reflectivity"),
         discovery_columns=NEXRAD_DISCOVERY_COLUMNS,

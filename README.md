@@ -13,7 +13,9 @@ src/nexrad_viewer/
 ├── reader.py          chronological sequence discovery
 ├── workspace.py       one Reader + one view callback + one Workspace
 ├── view.py            controls, statistics, tabs, tables, and layout
+├── analysis.py        exact grids and sequence-wide histogram limits
 ├── plots.py           PPI and native-gate distribution figures
+├── batch.py           durable full-resolution GIF rendering
 ├── style.py           local Plotly styling
 └── download.py        NOAA archive discovery and validated downloads
 ```
@@ -66,6 +68,12 @@ opens segmented scan playback with:
 - the visual colormap picker, including the custom NEXRAD scale;
 - fixed native dBZ limits and viewport-aware rasterization;
 - exact native-gate distributions, statistics, and metadata.
+
+Each sequence row also has a **Render full-resolution GIF** batch action. The
+workspace-level action renders every discovered sequence. Frames use native
+range-gate spacing over the configured radius, bypass viewport raster
+reduction, loop continuously, and are saved deterministically under
+`outputs/`. Existing GIFs are recognized as complete after a restart.
 
 Scientific values remain native. Cartesian resampling and viewport
 rasterization are display operations only.
