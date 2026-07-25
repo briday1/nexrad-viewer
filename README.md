@@ -51,11 +51,10 @@ scripts/
 
 ## Install and download
 
-Install Sigvue and this repository:
+Install the viewer with native desktop support:
 
 ```bash
-python -m pip install -e ../Scientific-Workspace-Browser
-python -m pip install -e .
+python -m pip install -e ".[desktop]"
 ```
 
 Download ten fixed one-hour cases from TLX, FDR, VNX, ICT, DDC, INX, SGF,
@@ -84,6 +83,18 @@ python scripts/download_data.py --list
 ```
 
 ## Run
+
+Open the viewer as a native desktop application:
+
+```bash
+nexrad-viewer-desktop
+```
+
+The desktop launcher hosts the same Sigvue interface in a pywebview window,
+including the framework fullscreen control, native folder selection,
+segmented radar playback, and batch actions.
+
+To use an ordinary browser instead:
 
 ```bash
 nexrad-viewer
@@ -128,26 +139,16 @@ rasterization are display operations only.
 
 ## Native desktop application
 
-Install the optional desktop toolchain:
-
-```bash
-python -m pip install -e ".[desktop]"
-```
-
-Run the same application in a native pywebview window during development:
-
-```bash
-nexrad-viewer-desktop
-```
-
 Build the platform-native PyInstaller artifact:
 
 ```bash
 nexrad-viewer-build
 ```
 
-On macOS this produces `dist/NEXRAD Viewer.app`; Windows and Linux produce
-`dist/nexrad-viewer` with the platform's executable suffix where applicable.
+The desktop extra installed during setup includes both pywebview and
+PyInstaller. On macOS this produces `dist/NEXRAD Viewer.app`; Windows and
+Linux produce `dist/nexrad-viewer` with the platform's executable suffix where
+applicable.
 PyInstaller builds are platform-specific, so each target must be built on its
 target operating system.
 
