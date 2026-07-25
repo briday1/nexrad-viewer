@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nexrad-viewer"
-version = "0.2.0"
+version = "0.2.1"
 description = "A focused NOAA NEXRAD Level III browser built with Sigvue"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,7 +14,7 @@ dependencies = [
     "numpy>=1.24",
     "pillow>=9.4",
     "plotly>=6.1.1",
-    "sigvue>=2026.53",
+    "sigvue>=2026.54",
 ]
 
 [project.optional-dependencies]
