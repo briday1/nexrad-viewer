@@ -5,6 +5,29 @@ super-resolution base-reflectivity sequences. This is intentionally one
 Sigvue `Workspace`, so opening the application goes directly to NEXRAD
 sequence discovery instead of showing a workspace catalog.
 
+## Preview
+
+The single-workspace landing page presents every downloaded radar sequence in
+one searchable table, including its scan count and time coverage:
+
+![NEXRAD sequence discovery table](figures/main.png)
+
+Opening a sequence provides segmented playback, display controls, and the
+native Level III base-reflectivity PPI:
+
+![Interactive 120 km NEXRAD plan-position display](figures/120_ppi.png)
+
+The same workspace can render every native scan as a deterministic,
+full-resolution animation:
+
+<p align="center">
+  <img
+    src="figures/twx-topeka-twx-n0b-ppi-120km-200ms.gif"
+    alt="Animated TWX Topeka NEXRAD base-reflectivity sequence"
+    width="720"
+  >
+</p>
+
 The repository is self-contained:
 
 ```text
