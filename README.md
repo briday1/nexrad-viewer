@@ -2,8 +2,9 @@
 
 A focused local browser for native NOAA NEXRAD Level III
 super-resolution base-reflectivity sequences. This is intentionally one
-Sigvue `Workspace`, so opening the application goes directly to NEXRAD
-sequence discovery instead of showing a workspace catalog.
+[Sigvue](https://github.com/briday1/sigvue) `Workspace`, so opening the
+application goes directly to NEXRAD sequence discovery instead of showing a
+workspace catalog.
 
 ## Preview
 
