@@ -10,7 +10,7 @@ feeds two workspaces:
 - **CONUS Radar Mosaic** treats each date as one synchronized dataset and
   shows the nearest scan from every available site on a minimal U.S. map.
 
-Both run in an ordinary browser or the packaged desktop window. Both also
+Both run in an ordinary browser or Sigvue's shared desktop host. Both also
 provide deterministic batch output.
 
 ## Preview
@@ -36,10 +36,11 @@ Its batch action renders each native scan as a full-resolution animation:
 
 ## Install
 
-Install the viewer with desktop support:
+Install the viewer. Add Sigvue's desktop extra when you want a native window:
 
 ```bash
-python -m pip install -e ".[desktop]"
+python -m pip install -e .
+python -m pip install "sigvue[desktop]"
 ```
 
 ## Get a full day of national data
@@ -96,10 +97,10 @@ from the installed package, wheel, and console entry points.
 
 ## Run
 
-Launch the native desktop application:
+Launch the same `browser.toml` through Sigvue's native desktop host:
 
 ```bash
-nexrad-viewer-desktop
+sigvue-desktop --config browser.toml
 ```
 
 Or use an ordinary browser:
@@ -212,29 +213,12 @@ Data Dissemination program. Station IDs and locations come from NOAA/NCEI's
 current HOMR NEXRAD station report. State outlines are a packaged extract
 from the official U.S. Census TIGERweb States layer.
 
-## Native desktop build
+## Desktop delivery
 
-Build the platform-native PyInstaller artifact:
-
-```bash
-nexrad-viewer-build
-```
-
-On macOS this produces `dist/NEXRAD Viewer.app`; Windows and Linux produce a
-platform executable. Each target must be built on its target operating
-system.
-
-When the checkout contains `data/`, the default build embeds it. To keep a
-large national dataset external:
-
-```bash
-nexrad-viewer-build --without-data
-nexrad-viewer-desktop --data-root /path/to/radar
-```
-
-The frozen app writes results only to the platform application-data folder,
-never into its bundle. Sigvue's fullscreen control toggles the native window
-in desktop mode and browser fullscreen in browser mode.
+Desktop delivery belongs to Sigvue rather than this workspace package.
+`sigvue-desktop` loads this repository's normal profile, so the readers,
+views, output paths, fullscreen control, and batch behavior stay identical
+without a NEXRAD-specific desktop executable.
 
 ## Test and package
 
