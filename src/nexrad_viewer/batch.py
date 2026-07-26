@@ -45,6 +45,7 @@ def _frame(
         timestamp=scan.header.scan_time,
         reflectivity_limits=REFLECTIVITY_DOMAIN,
         timeline_index=index,
+        site_label=scan.header.radar_id,
     )
 
 

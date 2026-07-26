@@ -173,6 +173,7 @@ def compose_frame(
     boundary_rings: Iterable[Iterable[tuple[float, float]]],
     reflectivity_limits: tuple[float, float],
     timeline_index: int,
+    site_label: str | None = None,
 ) -> Image.Image:
     """Compose the one canonical radar GIF frame layout."""
     width, height = map_image.size
@@ -195,7 +196,10 @@ def compose_frame(
     )
     draw.text(
         (14, 7),
-        f"{timestamp:%Y-%m-%d %H:%M:%S} UTC",
+        (
+            f"{timestamp:%Y-%m-%d %H:%M:%S} UTC"
+            + (f" · {site_label}" if site_label else "")
+        ),
         fill=(255, 255, 255),
         font=_font(max(20, width // 30)),
     )
@@ -221,6 +225,7 @@ def compose_reflectivity_frame(
     boundary_rings: Iterable[Iterable[tuple[float, float]]],
     reflectivity_limits: tuple[float, float],
     timeline_index: int,
+    site_label: str | None = None,
 ) -> Image.Image:
     """Map reflectivity and compose it through the one canonical frame path."""
     map_image = indexed_reflectivity(
@@ -235,6 +240,7 @@ def compose_reflectivity_frame(
             boundary_rings=boundary_rings,
             reflectivity_limits=reflectivity_limits,
             timeline_index=timeline_index,
+            site_label=site_label,
         )
     finally:
         map_image.close()
@@ -248,6 +254,7 @@ def compose_conus_frame(
     timestamp,
     reflectivity_limits: tuple[float, float],
     timeline_index: int,
+    site_label: str | None = None,
 ) -> Image.Image:
     """Render the canonical CONUS frame from one or many radar scans."""
     from .national.analysis import CONUS_BOUNDS, national_mosaic_grid
@@ -265,6 +272,7 @@ def compose_conus_frame(
         boundary_rings=state_boundaries(),
         reflectivity_limits=reflectivity_limits,
         timeline_index=timeline_index,
+        site_label=site_label,
     )
 
 
