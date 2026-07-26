@@ -359,6 +359,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
                 {
                     "data_root": root,
                     "output_root": output,
+                    "gif_width": 128,
                     "gif_frame_duration_ms": 100,
                 }
             )
@@ -397,12 +398,13 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         self.assertFalse(workspace.flatten_discovery)
         self.assertEqual((), resource.navigation_path)
         self.assertEqual(1, len(destination.files))
-        self.assertIn("-nexrad-dark-dbzbar-", destination.files[0])
+        self.assertIn("-nexrad-canonical-dbzbar-", destination.files[0])
+        self.assertIn("-128px-", destination.files[0])
         self.assertEqual(destination.files[0], result.files[0].name)
         self.assertEqual(destination.files, workspace_destination.files)
         self.assertEqual(result.files, workspace_result.files)
         self.assertEqual(2, frame_count)
-        self.assertEqual((164, 272), frame_size)
+        self.assertEqual((128, 260), frame_size)
         self.assertEqual(100, frame_duration)
 
     def test_radial_byte_count_must_match_declared_gate_count(self):

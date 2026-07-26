@@ -99,7 +99,7 @@ def test_package_leaves_delivery_to_sigvue():
     assert {
         requirement.split(">=", 1)[0]
         for requirement in payload["project"]["dependencies"]
-    } == {"certifi", "kaleido", "numpy", "pillow", "plotly", "sigvue"}
+    } == {"certifi", "numpy", "pillow", "plotly", "sigvue"}
     assert "desktop" not in payload["project"]["optional-dependencies"]
     assert not (project / "src" / "nexrad_viewer" / "desktop.py").exists()
     assert not (

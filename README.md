@@ -137,14 +137,11 @@ one sequence per radar/product; opening a sequence provides:
 - fixed native dBZ limits and viewport-aware rasterization;
 - exact native-gate distributions, statistics, and metadata.
 
-Each sequence can render a full-resolution Plan Position GIF. Every frame is
-the actual interactive Plotly Plan Position figure—not a separate batch
-plot—with the scan's full native radar range, NEXRAD colors, the dark
-theme, a timestamp-only header, a horizontal full-range dBZ scale, and source
-pixels matched to native range-gate spacing. The batch path bypasses viewport
-reduction and saves deterministically under `outputs/`.
-This exact Plotly export uses Kaleido and needs Google Chrome; if Chrome is
-not already installed, run `plotly_get_chrome`.
+Each sequence renders through the exact same GIF rasterization, frame
+composition, and animation code as the national mosaic. The site adapter
+supplies one radar scan, its full geographic bounds, and the full −20 to
+75 dBZ scale. Both site and national maps default to 1,200 pixels wide and
+save deterministically under `outputs/`.
 
 ### CONUS Radar Mosaic
 

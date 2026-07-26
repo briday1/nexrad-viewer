@@ -213,6 +213,33 @@ def compose_frame(
     return canvas
 
 
+def compose_reflectivity_frame(
+    reflectivity: np.ndarray,
+    *,
+    timestamp,
+    bounds: tuple[float, float, float, float],
+    boundary_rings: Iterable[Iterable[tuple[float, float]]],
+    reflectivity_limits: tuple[float, float],
+    timeline_index: int,
+) -> Image.Image:
+    """Map reflectivity and compose it through the one canonical frame path."""
+    map_image = indexed_reflectivity(
+        reflectivity,
+        minimum_visible_dbz=reflectivity_limits[0],
+    )
+    try:
+        return compose_frame(
+            map_image,
+            timestamp=timestamp,
+            bounds=bounds,
+            boundary_rings=boundary_rings,
+            reflectivity_limits=reflectivity_limits,
+            timeline_index=timeline_index,
+        )
+    finally:
+        map_image.close()
+
+
 def render_animation(
     target: str | Path,
     *,
@@ -268,6 +295,7 @@ def render_animation(
 __all__ = [
     "NEXRAD_GIF_PALETTE",
     "compose_frame",
+    "compose_reflectivity_frame",
     "dbz_indexes",
     "indexed_reflectivity",
     "render_animation",

@@ -86,6 +86,7 @@ def create_workspace(config) -> Workspace:
         view=view,
         batch=NexradGifBatch(
             values.path("output_root"),
+            width=values.integer("gif_width", 1200),
             frame_duration_ms=values.integer(
                 "gif_frame_duration_ms",
                 200,

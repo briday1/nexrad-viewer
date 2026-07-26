@@ -18,7 +18,11 @@ from sigvue import (
 )
 
 from ..formats.nexrad import open_scan
-from ..gif_rendering import compose_frame, indexed_reflectivity, render_animation
+from ..gif_rendering import (
+    compose_reflectivity_frame,
+    indexed_reflectivity,
+    render_animation,
+)
 from .analysis import CONUS_BOUNDS, national_mosaic_grid
 from .geography import state_boundaries
 from .models import NationalDay
@@ -63,20 +67,14 @@ def _frame_image(
         width=width,
         maximum_range_km=maximum_range_km,
     )
-    map_image = _indexed_map(
+    return compose_reflectivity_frame(
         reflectivity,
-        minimum_dbz=minimum_dbz,
-    )
-    composed = compose_frame(
-        map_image,
         timestamp=frame.target_time,
         bounds=CONUS_BOUNDS,
         boundary_rings=state_boundaries(),
         reflectivity_limits=(minimum_dbz, DBZ_MAXIMUM),
         timeline_index=frame_index,
     )
-    map_image.close()
-    return composed
 
 
 def render_national_gif(

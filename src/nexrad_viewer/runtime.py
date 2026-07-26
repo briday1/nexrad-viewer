@@ -60,6 +60,7 @@ tags = ["NOAA", "NEXRAD", "Level III", "sites", "reflectivity", "real data"]
 [workspaces.config]
 data_root = {json.dumps(str(data_root.expanduser().resolve()))}
 output_root = {json.dumps(str(output_root.expanduser().resolve()))}
+gif_width = 1200
 gif_frame_duration_ms = 200
 
 [[workspaces]]
