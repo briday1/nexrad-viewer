@@ -451,7 +451,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
 
     def test_national_gif_hides_echoes_below_its_event_threshold(self):
         reflectivity = np.asarray(
-            ((np.nan, -20.0, 19.99, 20.0, 35.0),),
+            ((np.nan, -20.0, 19.99, 20.0, 35.0, 90.0),),
             dtype=np.float32,
         )
 
@@ -463,6 +463,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         np.testing.assert_array_equal(indexes[0, :3], (0, 0, 0))
         self.assertGreater(int(indexes[0, 3]), 0)
         self.assertGreater(int(indexes[0, 4]), int(indexes[0, 3]))
+        self.assertEqual(254, int(indexes[0, 5]))
         self.assertEqual(NEXRAD_GIF_PALETTE, palette)
         self.assertEqual((100, 100, 100), tuple(palette[3:6]))
         self.assertEqual((248, 0, 253), tuple(palette[-6:-3]))

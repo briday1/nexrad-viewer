@@ -6,9 +6,7 @@ import re
 from io import BytesIO
 from math import ceil
 from pathlib import Path
-from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-import numpy as np
 import plotly.io as pio
 from PIL import Image
 from sigvue import (
@@ -21,41 +19,12 @@ from sigvue import (
 )
 
 from .formats.nexrad import NexradLevel3Sequence, open_scan
-from .plots import NEXRAD_COLORSCALE, ppi_figure
+from .gif_rendering import NEXRAD_GIF_PALETTE, render_animation
+from .plots import ppi_figure
 
 RENDER_GIF = "render-full-resolution-gif"
 
 
-def _palette() -> list[int]:
-    """Build a GIF-safe version of the application NEXRAD scale."""
-    colorscale = NEXRAD_COLORSCALE
-    locations = np.asarray(
-        [location for location, _ in colorscale],
-        dtype=np.float64,
-    )
-    stop_colors = np.asarray(
-        [
-            tuple(int(color[index : index + 2], 16) for index in (1, 3, 5))
-            for _, color in NEXRAD_COLORSCALE
-        ],
-        dtype=np.float64,
-    )
-    samples = np.linspace(0.0, 1.0, 254)
-    colors = (
-        np.column_stack(
-            [
-                np.interp(samples, locations, stop_colors[:, channel])
-                for channel in range(3)
-            ]
-        )
-        .round()
-        .astype(np.uint8)
-    )
-    entries = [(8, 17, 23), *map(tuple, colors), (255, 255, 255)]
-    return [component for color in entries for component in color]
-
-
-NEXRAD_GIF_PALETTE = _palette()
 GIF_PALETTE = NEXRAD_GIF_PALETTE
 
 
@@ -132,7 +101,6 @@ def _frame(
         },
         selector={"type": "heatmap"},
     )
-    # Preserve the full native radar diameter in the map body.
     payload = pio.to_image(
         figure,
         format="png",
@@ -156,42 +124,12 @@ def render_sequence_gif(
     destination = Path(target).expanduser().resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
     pixels = full_resolution_pixels(sequence)
-    with TemporaryDirectory(
-        dir=destination.parent,
-        prefix=f".{destination.stem}-frames-",
-    ) as frame_directory:
-        frame_paths: list[Path] = []
-        for index in range(sequence.scan_count):
-            frame = _frame(sequence, index, pixels=pixels)
-            frame_path = Path(frame_directory) / f"{index:04d}.png"
-            frame.save(frame_path, format="PNG")
-            frame.close()
-            frame_paths.append(frame_path)
-        frames = [Image.open(path) for path in frame_paths]
-        with NamedTemporaryFile(
-            dir=destination.parent,
-            prefix=f".{destination.name}.",
-            suffix=".gif",
-            delete=False,
-        ) as stream:
-            temporary = Path(stream.name)
-        try:
-            frames[0].save(
-                temporary,
-                format="GIF",
-                save_all=True,
-                append_images=frames[1:],
-                duration=frame_duration_ms,
-                loop=0,
-                disposal=2,
-                optimize=False,
-            )
-            temporary.replace(destination)
-        finally:
-            for frame in frames:
-                frame.close()
-            temporary.unlink(missing_ok=True)
-    return destination
+    return render_animation(
+        destination,
+        frame_count=sequence.scan_count,
+        frame_duration_ms=frame_duration_ms,
+        frame_builder=lambda index: _frame(sequence, index, pixels=pixels),
+    )
 
 
 class NexradGifBatch(Batch[NexradLevel3Sequence]):

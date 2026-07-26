@@ -6,8 +6,8 @@ import numpy as np
 from sigvue import UI
 from sigvue.helpers import format_bytes
 
-from .formats.nexrad import NexradSequenceSelection
 from .analysis import automatic_reflectivity_limits
+from .formats.nexrad import NexradSequenceSelection
 from .plots import REFLECTIVITY_COLORMAPS, histogram_figure, ppi_figure
 
 
