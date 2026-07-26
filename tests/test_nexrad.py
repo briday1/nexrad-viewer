@@ -17,7 +17,7 @@ from nexrad_viewer.formats.nexrad import (
     read_level3_radial,
 )
 from nexrad_viewer.national.analysis import national_mosaic_grid
-from nexrad_viewer.national.batch import RENDER_NATIONAL_GIF
+from nexrad_viewer.national.batch import RENDER_NATIONAL_GIF, _indexed_map
 from nexrad_viewer.national.reader import aligned_frames, discover_days
 from nexrad_viewer.national.workspace import (
     create_workspace as create_national_workspace,
@@ -415,6 +415,20 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         self.assertGreater(len(latitudes), 64)
         self.assertEqual((len(latitudes), 128), mosaic.shape)
 
+    def test_national_gif_hides_echoes_below_its_event_threshold(self):
+        reflectivity = np.asarray(
+            ((np.nan, -20.0, 19.99, 20.0, 35.0),),
+            dtype=np.float32,
+        )
+
+        image = _indexed_map(reflectivity, minimum_dbz=20.0)
+        indexes = np.asarray(image)
+        image.close()
+
+        np.testing.assert_array_equal(indexes[0, :3], (0, 0, 0))
+        self.assertGreater(int(indexes[0, 3]), 0)
+        self.assertGreater(int(indexes[0, 4]), int(indexes[0, 3]))
+
     def test_national_workspace_discovers_one_date_and_renders_durable_gif(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -432,6 +446,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
                     "national_frame_interval_minutes": 60,
                     "national_alignment_tolerance_minutes": 30,
                     "national_gif_width": 128,
+                    "national_gif_minimum_dbz": 20,
                     "national_gif_frame_duration_ms": 100,
                 }
             )
@@ -457,6 +472,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         self.assertEqual(1.0, radius.default)
         self.assertEqual(1.0, radius.maximum)
         self.assertEqual(1, len(destination.files))
+        self.assertIn("-min20dbz-", destination.files[0])
         self.assertEqual(destination.files[0], result.files[0].name)
         self.assertEqual(2, frame_count)
 

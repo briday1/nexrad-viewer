@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from math import isfinite
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
@@ -34,8 +35,12 @@ def _font(size: int) -> ImageFont.ImageFont:
         return ImageFont.load_default()
 
 
-def _indexed_map(reflectivity: np.ndarray) -> Image.Image:
-    finite = np.isfinite(reflectivity)
+def _indexed_map(
+    reflectivity: np.ndarray,
+    *,
+    minimum_dbz: float,
+) -> Image.Image:
+    finite = np.isfinite(reflectivity) & (reflectivity >= minimum_dbz)
     indexes = np.zeros(reflectivity.shape, dtype=np.uint8)
     indexes[finite] = 1 + np.rint(
         np.clip((reflectivity[finite] + 20.0) / 95.0, 0.0, 1.0) * 253.0
@@ -73,6 +78,7 @@ def _frame_image(
     interval_seconds: float,
     tolerance_seconds: float,
     width: int,
+    minimum_dbz: float,
 ) -> Image.Image:
     frames = aligned_frames(
         day,
@@ -89,7 +95,10 @@ def _frame_image(
         width=width,
         maximum_range_km=maximum_range_km,
     )
-    map_image = _indexed_map(reflectivity)
+    map_image = _indexed_map(
+        reflectivity,
+        minimum_dbz=minimum_dbz,
+    )
     height = map_image.height
     header_height = max(66, width // 15)
     canvas = Image.new("P", (width, height + header_height), color=0)
@@ -115,7 +124,7 @@ def _frame_image(
         (
             f"Frame {frame_index + 1}/{len(frames)} · "
             f"{frame.site_count}/{day.site_count} sites · "
-            f"nearest native scans · -20 to 75 dBZ"
+            f"nearest native scans · {minimum_dbz:g} to 75 dBZ"
         ),
         fill=255,
         font=detail_font,
@@ -132,6 +141,7 @@ def render_national_gif(
     frame_interval_minutes: float,
     alignment_tolerance_minutes: float,
     width: int,
+    minimum_dbz: float,
     frame_duration_ms: int,
 ) -> Path:
     """Render all synchronized frames without interactive viewport reduction."""
@@ -158,6 +168,7 @@ def render_national_gif(
                 interval_seconds=interval_seconds,
                 tolerance_seconds=tolerance_seconds,
                 width=width,
+                minimum_dbz=minimum_dbz,
             )
             frame_path = Path(frame_directory) / f"{index:04d}.gif"
             image.save(frame_path, format="GIF", optimize=False)
@@ -210,26 +221,35 @@ class NationalGifBatch(Batch[NationalDay]):
         frame_interval_minutes: float,
         alignment_tolerance_minutes: float,
         width: int,
+        minimum_dbz: float,
         frame_duration_ms: int,
     ) -> None:
         if frame_interval_minutes <= 0 or alignment_tolerance_minutes < 0:
             raise ValueError("national frame timing values are invalid")
         if width < 128:
             raise ValueError("national GIF width must be at least 128")
+        if (
+            not isfinite(minimum_dbz)
+            or minimum_dbz < -20
+            or minimum_dbz > 75
+        ):
+            raise ValueError("national GIF minimum dBZ must be from -20 to 75")
         if frame_duration_ms < 20:
             raise ValueError("national GIF duration must be at least 20 ms")
         self.output_root = Path(output_root).expanduser().resolve()
         self.frame_interval_minutes = float(frame_interval_minutes)
         self.alignment_tolerance_minutes = float(alignment_tolerance_minutes)
         self.width = int(width)
+        self.minimum_dbz = float(minimum_dbz)
         self.frame_duration_ms = int(frame_duration_ms)
 
     def _filename(self, resource: DataResource) -> str:
         slug = re.sub(r"[^a-z0-9]+", "-", resource.identifier.lower()).strip("-")
         cadence = f"{self.frame_interval_minutes:g}".replace(".", "p")
+        threshold = f"{self.minimum_dbz:g}".replace(".", "p")
         return (
             f"{slug}-conus-mosaic-{cadence}min-"
-            f"{self.width}px-{self.frame_duration_ms}ms.gif"
+            f"min{threshold}dbz-{self.width}px-{self.frame_duration_ms}ms.gif"
         )
 
     def item_destination(
@@ -267,6 +287,7 @@ class NationalGifBatch(Batch[NationalDay]):
             frame_interval_minutes=self.frame_interval_minutes,
             alignment_tolerance_minutes=self.alignment_tolerance_minutes,
             width=self.width,
+            minimum_dbz=self.minimum_dbz,
             frame_duration_ms=self.frame_duration_ms,
         )
         return BatchResult((output,), "Rendered national NEXRAD mosaic GIF")
@@ -285,6 +306,7 @@ class NationalGifBatch(Batch[NationalDay]):
                 frame_interval_minutes=self.frame_interval_minutes,
                 alignment_tolerance_minutes=self.alignment_tolerance_minutes,
                 width=self.width,
+                minimum_dbz=self.minimum_dbz,
                 frame_duration_ms=self.frame_duration_ms,
             )
             for resource in resources

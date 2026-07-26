@@ -102,6 +102,7 @@ output_root = {json.dumps(str(output_root.expanduser().resolve()))}
 national_frame_interval_minutes = 60.0
 national_alignment_tolerance_minutes = 30.0
 national_gif_width = 1200
+national_gif_minimum_dbz = 20.0
 national_gif_frame_duration_ms = 250
 """
 

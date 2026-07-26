@@ -156,11 +156,14 @@ where radar coverage overlaps; source gates are never averaged or modified.
 
 The date-level batch action exports the complete synchronized map history as
 a looping GIF. For the default hourly download cadence, a full-day dataset
-becomes 24 full-CONUS frames:
+becomes 24 full-CONUS frames. The batch animation masks reflectivity below
+20 dBZ so weak clear-air returns do not obscure larger weather systems; it
+does not rescale or average the surviving native values. The interactive
+viewer continues to expose the complete fixed dBZ range.
 
 <p align="center">
   <img
-    src="figures/2026-07-24-conus-mosaic-60min-1200px-250ms.gif"
+    src="figures/2026-07-24-conus-mosaic-60min-min20dbz-1200px-250ms.gif"
     alt="Full-day synchronized CONUS NEXRAD reflectivity history for July 24, 2026"
     width="900"
   >
@@ -177,9 +180,9 @@ The interactive map includes:
 - loaded-buffer memory and alignment statistics.
 
 Its batch action renders every synchronized frame at a configured
-high-resolution grid, uses every scan's complete native radar range, and
-writes one looping GIF per date. The batch path bypasses interactive
-viewport rasterization.
+high-resolution grid, uses every scan's complete native radar range, applies
+the configured event threshold (20 dBZ by default), and writes one looping
+GIF per date. The batch path bypasses interactive viewport rasterization.
 
 Run that export from the date row's action button in the browser, or dispatch
 it directly:
@@ -191,8 +194,10 @@ nexrad-viewer batch \
   --action render-national-mosaic-gif
 ```
 
-The resulting filename records the alignment cadence, map width, and frame
-duration, and the durable artifact is written under `outputs/`.
+The resulting filename records the alignment cadence, event threshold, map
+width, and frame duration, and the durable artifact is written under
+`outputs/`. If the file already exists, Sigvue shows the action as
+`rerun`; launching it regenerates the deterministic artifact in place.
 
 ## Data accuracy and provenance
 

@@ -107,6 +107,7 @@ def create_workspace(config) -> Workspace:
             frame_interval_minutes=interval_minutes,
             alignment_tolerance_minutes=tolerance_minutes,
             width=values.integer("national_gif_width", 1200),
+            minimum_dbz=values.floating("national_gif_minimum_dbz", 20.0),
             frame_duration_ms=values.integer(
                 "national_gif_frame_duration_ms",
                 250,
