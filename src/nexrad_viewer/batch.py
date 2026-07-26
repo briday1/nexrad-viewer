@@ -27,9 +27,10 @@ RENDER_GIF = "render-full-resolution-gif"
 
 
 def _palette() -> list[int]:
-    """Retain one stable dBZ palette for the national batch renderer."""
+    """Build a GIF-safe version of the application NEXRAD scale."""
+    colorscale = NEXRAD_COLORSCALE
     locations = np.asarray(
-        [location for location, _ in NEXRAD_COLORSCALE],
+        [location for location, _ in colorscale],
         dtype=np.float64,
     )
     stop_colors = np.asarray(
@@ -54,7 +55,8 @@ def _palette() -> list[int]:
     return [component for color in entries for component in color]
 
 
-GIF_PALETTE = _palette()
+NEXRAD_GIF_PALETTE = _palette()
+GIF_PALETTE = NEXRAD_GIF_PALETTE
 
 
 def full_resolution_pixels(
@@ -89,26 +91,53 @@ def _frame(
     *,
     pixels: int,
 ) -> Image.Image:
-    """Render exactly the dark Portland Plan Position figure."""
+    """Render the full dark NEXRAD Plan Position figure."""
     scan = open_scan(sequence.headers[index].source_path)
     radius = float(scan.ground_range_edges_km[-1])
     figure = ppi_figure(
         scan,
         maximum_range_km=radius,
         pixels=pixels,
-        colormap="Portland",
+        colormap="NEXRAD",
         theme="dark",
         render_east_pixels=pixels,
         render_north_pixels=pixels,
         progressive=False,
     )
-    # Account for the plot's title/margins/colorbar so the map body retains
-    # approximately one output pixel per native range-gate spacing.
+    figure.update_layout(
+        title={
+            "text": f"{scan.header.scan_time:%Y-%m-%d %H:%M:%S} UTC",
+            "x": 0.012,
+            "xanchor": "left",
+            "y": 0.985,
+            "yanchor": "top",
+            "font": {"size": 26},
+        },
+        margin={"l": 18, "r": 18, "t": 52, "b": 92},
+        showlegend=False,
+    )
+    figure.update_traces(
+        colorbar={
+            "title": {"text": "Reflectivity (dBZ)", "side": "bottom"},
+            "orientation": "h",
+            "x": 0.5,
+            "xanchor": "center",
+            "y": -0.12,
+            "yanchor": "top",
+            "len": 0.78,
+            "thickness": 16,
+            "tickmode": "array",
+            "tickvals": [-20, 0, 20, 40, 60, 75],
+            "ticktext": ["−20", "0", "20", "40", "60", "75"],
+        },
+        selector={"type": "heatmap"},
+    )
+    # Preserve the full native radar diameter in the map body.
     payload = pio.to_image(
         figure,
         format="png",
-        width=pixels + 94,
-        height=pixels + 70,
+        width=pixels + 36,
+        height=pixels + 144,
         scale=1,
     )
     with Image.open(BytesIO(payload)) as rendered:
@@ -200,7 +229,7 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
             resource.identifier.lower(),
         ).strip("-")
         return (
-            f"{slug}-plan-position-fullwidth-portland-dark-"
+            f"{slug}-plan-position-fullwidth-nexrad-dark-dbzbar-"
             f"{self.frame_duration_ms}ms.gif"
         )
 
@@ -266,6 +295,7 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
 
 __all__ = [
     "GIF_PALETTE",
+    "NEXRAD_GIF_PALETTE",
     "RENDER_GIF",
     "NexradGifBatch",
     "full_resolution_pixels",

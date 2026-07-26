@@ -34,6 +34,7 @@ NEXRAD_COLORSCALE = (
     (0.97, "#bc0000"),
     (1.00, "#f800fd"),
 )
+REFLECTIVITY_DOMAIN = (-20.0, 75.0)
 
 
 def _register_nexrad_preview() -> None:
@@ -63,6 +64,41 @@ REFLECTIVITY_COLORMAPS = (
 )
 
 
+def bounded_reflectivity_colorscale(
+    colormap: str,
+    limits: tuple[float, float],
+) -> list[list[object]]:
+    """Crop a fixed-domain scale without changing any dBZ-to-color mapping."""
+    domain_lower, domain_upper = REFLECTIVITY_DOMAIN
+    lower, upper = limits
+    lower_fraction = (lower - domain_lower) / (domain_upper - domain_lower)
+    upper_fraction = (upper - domain_lower) / (domain_upper - domain_lower)
+    source = (
+        [list(stop) for stop in NEXRAD_COLORSCALE]
+        if colormap == "NEXRAD"
+        else plotly_colors.get_colorscale(colormap)
+    )
+    fractions = [
+        lower_fraction,
+        *(
+            float(location)
+            for location, _ in source
+            if lower_fraction < float(location) < upper_fraction
+        ),
+        upper_fraction,
+    ]
+    colors = plotly_colors.sample_colorscale(
+        source,
+        fractions,
+        colortype="rgb",
+    )
+    width = upper_fraction - lower_fraction
+    return [
+        [(fraction - lower_fraction) / width, color]
+        for fraction, color in zip(fractions, colors, strict=True)
+    ]
+
+
 def ppi_figure(
     scan: NexradLevel3Radial,
     *,
@@ -74,6 +110,7 @@ def ppi_figure(
     render_north_pixels: int = 256,
     progressive: bool = True,
     viewport: dict[str, object] | None = None,
+    reflectivity_limits: tuple[float, float] = (-20.0, 75.0),
 ) -> go.Figure:
     if colormap not in REFLECTIVITY_COLORMAPS:
         raise ValueError(f"Unknown reflectivity colormap: {colormap}")
@@ -131,13 +168,13 @@ def ppi_figure(
         scaleratio=1 / cos(radians(latitude)),
         constrain="domain",
     )
-    colorscale = NEXRAD_COLORSCALE if colormap == "NEXRAD" else colormap
+    colorscale = bounded_reflectivity_colorscale(colormap, reflectivity_limits)
     heatmap_options = {
         "x": longitudes,
         "y": latitudes,
         "z": dbz,
-        "zmin": -20,
-        "zmax": 75,
+        "zmin": reflectivity_limits[0],
+        "zmax": reflectivity_limits[1],
         "colorscale": colorscale,
         "colorbar": {
             "title": {"text": "Reflectivity<br>(dBZ)"},

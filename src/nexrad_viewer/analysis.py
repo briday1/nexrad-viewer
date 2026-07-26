@@ -18,6 +18,33 @@ from .formats.nexrad import (
 EARTH_KM_PER_DEGREE = 111.195
 
 
+def automatic_reflectivity_limits(
+    scans: NexradLevel3Radial | tuple[NexradLevel3Radial, ...],
+) -> tuple[float, float]:
+    """Return robust display limits rounded outward to 5 dBZ."""
+    collection = (scans,) if isinstance(scans, NexradLevel3Radial) else scans
+    measured_values: list[np.ndarray] = []
+    for scan in collection:
+        measured = scan.level_codes[scan.measured_gate_mask()]
+        if measured.size:
+            measured_values.append(
+                scan.header.minimum_value_dbz
+                + (measured.astype(np.float32) - FIRST_MEASURED_CODE)
+                * scan.header.value_increment_dbz
+            )
+    if not measured_values:
+        return -20.0, 75.0
+    values = np.concatenate(measured_values)
+    lower = max(-20.0, 5.0 * np.floor(np.percentile(values, 1.0) / 5.0))
+    upper = min(75.0, 5.0 * np.ceil(np.percentile(values, 99.9) / 5.0))
+    if upper - lower < 20.0:
+        center = float(np.median(values))
+        lower = max(-20.0, 5.0 * np.floor((center - 10.0) / 5.0))
+        upper = min(75.0, lower + 20.0)
+        lower = max(-20.0, upper - 20.0)
+    return float(lower), float(upper)
+
+
 def cartesian_display_grid(
     scan: NexradLevel3Radial,
     *,

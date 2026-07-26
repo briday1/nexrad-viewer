@@ -7,6 +7,7 @@ from sigvue import UI
 from sigvue.helpers import format_bytes
 
 from .formats.nexrad import NexradSequenceSelection
+from .analysis import automatic_reflectivity_limits
 from .plots import REFLECTIVITY_COLORMAPS, histogram_figure, ppi_figure
 
 
@@ -161,8 +162,17 @@ def view(
     colormap = ui.colormap(
         "weather_radar_colormap",
         label="Colormap",
-        default="Portland",
+        default="NEXRAD",
         options=REFLECTIVITY_COLORMAPS,
+        group="Map display",
+    )
+    zmin, zmax = ui.limits(
+        "weather_radar_reflectivity_limits",
+        label="Reflectivity limits (dBZ)",
+        default=automatic_reflectivity_limits(scan),
+        minimum=-20,
+        maximum=75,
+        step=0.5,
         group="Map display",
     )
     render_east_pixels = int(
@@ -209,6 +219,7 @@ def view(
         with ui.group("column"):
             ui.place_parameters(
                 "weather_radar_colormap",
+                "weather_radar_reflectivity_limits",
                 "weather_radar_ppi_range_km",
                 "weather_radar_ppi_pixels",
                 "weather_radar_progressive_rendering",
@@ -227,6 +238,7 @@ def view(
                 render_north_pixels=render_north_pixels,
                 progressive=progressive,
                 viewport=ui.plot_viewport("weather-radar-ppi"),
+                reflectivity_limits=(zmin, zmax),
             ),
             key="weather-radar-ppi",
             axis_navigation="bounded",

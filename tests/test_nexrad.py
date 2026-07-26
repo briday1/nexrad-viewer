@@ -9,8 +9,9 @@ from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
+from plotly import colors as plotly_colors
 
-from nexrad_viewer.batch import RENDER_GIF
+from nexrad_viewer.batch import NEXRAD_GIF_PALETTE, RENDER_GIF
 from nexrad_viewer.formats.nexrad import (
     NexradFormatError,
     read_level3_header,
@@ -22,7 +23,11 @@ from nexrad_viewer.national.reader import aligned_frames, discover_days
 from nexrad_viewer.national.workspace import (
     create_workspace as create_national_workspace,
 )
-from nexrad_viewer.plots import ppi_figure
+from nexrad_viewer.plots import (
+    NEXRAD_COLORSCALE,
+    bounded_reflectivity_colorscale,
+    ppi_figure,
+)
 from nexrad_viewer.reader import (
     describe_level3,
     level3_sequence_reader,
@@ -282,7 +287,15 @@ class NexradLevel3ReaderTests(unittest.TestCase):
     def test_ppi_is_progressive_and_uses_compact_map_legends(self):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "TLX_N0B_2024_05_20_03_10_54"
-            path.write_bytes(synthetic_n0b())
+            path.write_bytes(
+                synthetic_n0b(
+                    wide_radials=True,
+                    level_codes=(
+                        bytes((2, 100, 255, 100)),
+                        bytes((2, 100, 255, 100)),
+                    ),
+                )
+            )
             scan = read_level3_radial(path)
 
         figure = ppi_figure(
@@ -291,10 +304,23 @@ class NexradLevel3ReaderTests(unittest.TestCase):
             pixels=32,
             colormap="NEXRAD",
             theme="light",
+            reflectivity_limits=(-10.0, 55.0),
         )
 
         self.assertIsNone(figure.layout.height)
         self.assertTrue(figure._sigvue_viewport_heatmap)
+        self.assertEqual(-10.0, figure.data[0].zmin)
+        self.assertEqual(55.0, figure.data[0].zmax)
+        visible_dbz = np.asarray(figure.data[0].z, dtype=float)
+        self.assertLess(float(np.nanmin(visible_dbz)), -10.0)
+        self.assertGreater(float(np.nanmax(visible_dbz)), 55.0)
+        cropped = bounded_reflectivity_colorscale("NEXRAD", (-10.0, 55.0))
+        expected_floor_color = plotly_colors.sample_colorscale(
+            [list(stop) for stop in NEXRAD_COLORSCALE],
+            [10.0 / 95.0],
+            colortype="rgb",
+        )[0]
+        self.assertEqual(expected_floor_color, cropped[0][1])
         self.assertIsNone(figure.layout.xaxis.title.text)
         self.assertIsNone(figure.layout.yaxis.title.text)
         self.assertFalse(figure.layout.xaxis.showgrid)
@@ -338,6 +364,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
             )
             resource = workspace.discover_items()[0]
             opened = workspace.open_item(resource.identifier)
+            controls = {control.name: control for control in opened.page.controls}
             histogram = opened.page.views[1].callback({})
             destination = workspace.item_batch_destination(
                 resource.identifier,
@@ -361,14 +388,21 @@ class NexradLevel3ReaderTests(unittest.TestCase):
                 frame_duration = animation.info["duration"]
 
         self.assertEqual((0, 9), tuple(histogram.layout.yaxis.range))
+        reflectivity_limits = controls["weather_radar_reflectivity_limits"]
+        self.assertEqual("limits", reflectivity_limits.control_type)
+        self.assertLess(
+            reflectivity_limits.default[0],
+            reflectivity_limits.default[1],
+        )
         self.assertFalse(workspace.flatten_discovery)
         self.assertEqual((), resource.navigation_path)
         self.assertEqual(1, len(destination.files))
+        self.assertIn("-nexrad-dark-dbzbar-", destination.files[0])
         self.assertEqual(destination.files[0], result.files[0].name)
         self.assertEqual(destination.files, workspace_destination.files)
         self.assertEqual(result.files, workspace_result.files)
         self.assertEqual(2, frame_count)
-        self.assertEqual((222, 198), frame_size)
+        self.assertEqual((164, 272), frame_size)
         self.assertEqual(100, frame_duration)
 
     def test_radial_byte_count_must_match_declared_gate_count(self):
@@ -423,11 +457,15 @@ class NexradLevel3ReaderTests(unittest.TestCase):
 
         image = _indexed_map(reflectivity, minimum_dbz=20.0)
         indexes = np.asarray(image)
+        palette = image.getpalette()
         image.close()
 
         np.testing.assert_array_equal(indexes[0, :3], (0, 0, 0))
         self.assertGreater(int(indexes[0, 3]), 0)
         self.assertGreater(int(indexes[0, 4]), int(indexes[0, 3]))
+        self.assertEqual(NEXRAD_GIF_PALETTE, palette)
+        self.assertEqual((100, 100, 100), tuple(palette[3:6]))
+        self.assertEqual((248, 0, 253), tuple(palette[-6:-3]))
 
     def test_national_workspace_discovers_one_date_and_renders_durable_gif(self):
         with TemporaryDirectory() as directory:
@@ -468,10 +506,19 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         self.assertEqual("2024-05-20", resource.identifier)
         self.assertEqual(2, len(opened.page.playback.segments))
         radius = controls["national_radar_radius_km"]
+        reflectivity_limits = controls["national_reflectivity_limits"]
+        colormap = controls["national_colormap"]
         self.assertEqual("float", radius.control_type)
         self.assertEqual(1.0, radius.default)
         self.assertEqual(1.0, radius.maximum)
+        self.assertEqual("limits", reflectivity_limits.control_type)
+        self.assertLess(
+            reflectivity_limits.default[0],
+            reflectivity_limits.default[1],
+        )
+        self.assertEqual("NEXRAD", colormap.default)
         self.assertEqual(1, len(destination.files))
+        self.assertIn("-conus-mosaic-nexrad-", destination.files[0])
         self.assertIn("-min20dbz-", destination.files[0])
         self.assertEqual(destination.files[0], result.files[0].name)
         self.assertEqual(2, frame_count)

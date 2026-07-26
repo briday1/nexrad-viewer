@@ -5,7 +5,7 @@ from __future__ import annotations
 import plotly.graph_objects as go
 from sigvue import add_viewport_heatmap
 
-from ..plots import NEXRAD_COLORSCALE, REFLECTIVITY_COLORMAPS
+from ..plots import REFLECTIVITY_COLORMAPS, bounded_reflectivity_colorscale
 from ..style import style_plotly
 from .analysis import CONUS_BOUNDS, national_mosaic_grid
 from .geography import boundary_trace_coordinates
@@ -50,6 +50,7 @@ def national_map_figure(
     render_width: int = 640,
     render_height: int = 360,
     viewport: dict[str, object] | None = None,
+    reflectivity_limits: tuple[float, float] = (-20.0, 75.0),
 ) -> go.Figure:
     """Render one aligned frame over quiet Census state boundaries."""
     if colormap not in REFLECTIVITY_COLORMAPS:
@@ -63,7 +64,7 @@ def national_map_figure(
         maximum_range_km=maximum_range_km,
         bounds=bounds,
     )
-    colorscale = NEXRAD_COLORSCALE if colormap == "NEXRAD" else colormap
+    colorscale = bounded_reflectivity_colorscale(colormap, reflectivity_limits)
     hovertemplate = (
         "Longitude: %{x:.2f}°<br>Latitude: %{y:.2f}°"
         "<br>Reflectivity: %{z:.1f} dBZ<extra></extra>"
@@ -79,8 +80,8 @@ def national_map_figure(
             x=longitudes,
             y=latitudes,
             z=reflectivity,
-            zmin=-20,
-            zmax=75,
+            zmin=reflectivity_limits[0],
+            zmax=reflectivity_limits[1],
             colorscale=colorscale,
             colorbar={
                 "title": {"text": "Reflectivity<br>(dBZ)"},
@@ -96,8 +97,8 @@ def national_map_figure(
                 x=longitudes,
                 y=latitudes,
                 z=reflectivity,
-                zmin=-20,
-                zmax=75,
+                zmin=reflectivity_limits[0],
+                zmax=reflectivity_limits[1],
                 colorscale=colorscale,
                 colorbar={
                     "title": {"text": "Reflectivity<br>(dBZ)"},

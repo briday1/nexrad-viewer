@@ -7,6 +7,7 @@ from math import ceil
 from sigvue import UI
 from sigvue.helpers import format_bytes
 
+from ..analysis import automatic_reflectivity_limits
 from ..plots import REFLECTIVITY_COLORMAPS
 from .models import NationalFrameSelection
 from .plots import national_map_figure
@@ -83,6 +84,15 @@ def view(selection: NationalFrameSelection, ui: UI) -> None:
         options=REFLECTIVITY_COLORMAPS,
         group="National map",
     )
+    zmin, zmax = ui.limits(
+        "national_reflectivity_limits",
+        label="Reflectivity limits (dBZ)",
+        default=automatic_reflectivity_limits(selection.scans),
+        minimum=-20,
+        maximum=75,
+        step=0.5,
+        group="National map",
+    )
     progressive = ui.toggle(
         "national_progressive_rendering",
         label="Progressive rendering",
@@ -115,6 +125,7 @@ def view(selection: NationalFrameSelection, ui: UI) -> None:
         with ui.group("column"):
             ui.place_parameters(
                 "national_colormap",
+                "national_reflectivity_limits",
                 "national_mosaic_width",
                 "national_radar_radius_km",
                 "national_progressive_rendering",
@@ -133,6 +144,7 @@ def view(selection: NationalFrameSelection, ui: UI) -> None:
                 render_width=render_width,
                 render_height=render_height,
                 viewport=ui.plot_viewport("national-radar-map"),
+                reflectivity_limits=(zmin, zmax),
             ),
             key="national-radar-map",
             axis_navigation="bounded",

@@ -18,7 +18,7 @@ from sigvue import (
     DataResource,
 )
 
-from ..batch import GIF_PALETTE
+from ..batch import NEXRAD_GIF_PALETTE
 from ..formats.nexrad import open_scan
 from .analysis import CONUS_BOUNDS, national_mosaic_grid
 from .geography import state_boundaries
@@ -26,6 +26,8 @@ from .models import NationalDay
 from .reader import aligned_frames
 
 RENDER_NATIONAL_GIF = "render-national-mosaic-gif"
+DBZ_MINIMUM = -20.0
+DBZ_MAXIMUM = 75.0
 
 
 def _font(size: int) -> ImageFont.ImageFont:
@@ -42,12 +44,74 @@ def _indexed_map(
 ) -> Image.Image:
     finite = np.isfinite(reflectivity) & (reflectivity >= minimum_dbz)
     indexes = np.zeros(reflectivity.shape, dtype=np.uint8)
-    indexes[finite] = 1 + np.rint(
-        np.clip((reflectivity[finite] + 20.0) / 95.0, 0.0, 1.0) * 253.0
-    ).astype(np.uint8)
+    indexes[finite] = _dbz_indexes(reflectivity[finite])
     image = Image.fromarray(np.flipud(indexes), mode="P")
-    image.putpalette(GIF_PALETTE)
+    image.putpalette(NEXRAD_GIF_PALETTE)
     return image
+
+
+def _dbz_indexes(values) -> np.ndarray:
+    return 1 + np.rint(
+        np.clip(
+            (np.asarray(values) - DBZ_MINIMUM) / (DBZ_MAXIMUM - DBZ_MINIMUM),
+            0.0,
+            1.0,
+        )
+        * 253.0
+    ).astype(np.uint8)
+
+
+def _draw_colorbar(
+    draw: ImageDraw.ImageDraw,
+    *,
+    width: int,
+    top: int,
+    minimum_dbz: float,
+) -> None:
+    left = max(18, width // 10)
+    right = width - left
+    bar_top = top + 8
+    bar_height = max(10, min(16, width // 75))
+    for x in range(left, right):
+        fraction = (x - left) / max(1, right - left - 1)
+        dbz = minimum_dbz + fraction * (DBZ_MAXIMUM - minimum_dbz)
+        index = int(_dbz_indexes((dbz,))[0])
+        color = tuple(NEXRAD_GIF_PALETTE[index * 3 : index * 3 + 3])
+        draw.line((x, bar_top, x, bar_top + bar_height), fill=color)
+    font = _font(max(12, min(20, width // 60)))
+    tick_step = 10.0 if DBZ_MAXIMUM - minimum_dbz <= 60 else 20.0
+    interior = np.arange(
+        np.ceil(minimum_dbz / tick_step) * tick_step,
+        DBZ_MAXIMUM,
+        tick_step,
+    )
+    ticks = tuple(dict.fromkeys((minimum_dbz, *interior, DBZ_MAXIMUM)))
+    for tick in ticks:
+        x = round(
+            left
+            + (tick - minimum_dbz)
+            / (DBZ_MAXIMUM - minimum_dbz)
+            * (right - left)
+        )
+        draw.line(
+            (x, bar_top + bar_height, x, bar_top + bar_height + 4),
+            fill=(255, 255, 255),
+        )
+        label = f"{tick:g}"
+        box = draw.textbbox((0, 0), label, font=font)
+        draw.text(
+            (x - (box[2] - box[0]) / 2, bar_top + bar_height + 6),
+            label,
+            fill=(255, 255, 255),
+            font=font,
+        )
+    draw.text(
+        (width / 2, bar_top + bar_height + 32),
+        "Reflectivity (dBZ)",
+        fill=(255, 255, 255),
+        font=font,
+        anchor="ma",
+    )
 
 
 def _draw_boundaries(
@@ -68,7 +132,12 @@ def _draw_boundaries(
             for longitude, latitude in ring
         )
         if len(points) >= 2:
-            draw.line(points, fill=255, width=max(1, width // 1200))
+            draw.line(
+                points,
+                fill=(232, 241, 243),
+                width=max(1, width // 1200),
+                joint="curve",
+            )
 
 
 def _frame_image(
@@ -100,10 +169,14 @@ def _frame_image(
         minimum_dbz=minimum_dbz,
     )
     height = map_image.height
-    header_height = max(66, width // 15)
-    canvas = Image.new("P", (width, height + header_height), color=0)
-    canvas.putpalette(GIF_PALETTE)
-    canvas.paste(map_image, (0, header_height))
+    header_height = max(56, width // 18)
+    footer_height = max(76, width // 13)
+    canvas = Image.new(
+        "RGB",
+        (width, height + header_height + footer_height),
+        color=(8, 17, 23),
+    )
+    canvas.paste(map_image.convert("RGB"), (0, header_height))
     draw = ImageDraw.Draw(canvas)
     _draw_boundaries(
         draw,
@@ -111,26 +184,29 @@ def _frame_image(
         height=height,
         header_height=header_height,
     )
-    title_font = _font(max(14, min(24, width // 50)))
-    detail_font = _font(max(11, min(17, width // 72)))
+    title_font = _font(max(20, min(40, width // 30)))
     draw.text(
         (14, 7),
-        f"CONUS base reflectivity · {frame.target_time:%Y-%m-%d %H:%M} UTC",
-        fill=255,
+        f"{frame.target_time:%Y-%m-%d %H:%M} UTC",
+        fill=(255, 255, 255),
         font=title_font,
     )
-    draw.text(
-        (14, 38),
-        (
-            f"Frame {frame_index + 1}/{len(frames)} · "
-            f"{frame.site_count}/{day.site_count} sites · "
-            f"nearest native scans · {minimum_dbz:g} to 75 dBZ"
-        ),
-        fill=255,
-        font=detail_font,
+    _draw_colorbar(
+        draw,
+        width=width,
+        top=header_height + height,
+        minimum_dbz=minimum_dbz,
     )
     # Preserve a frame timeline even when meteorology is visually unchanged.
-    canvas.putpixel((width - 1, header_height - 1), 1 + frame_index % 254)
+    timeline_index = 1 + frame_index % 254
+    canvas.putpixel(
+        (width - 1, header_height - 1),
+        tuple(
+            NEXRAD_GIF_PALETTE[
+                timeline_index * 3 : timeline_index * 3 + 3
+            ]
+        ),
+    )
     return canvas
 
 
@@ -170,8 +246,8 @@ def render_national_gif(
                 width=width,
                 minimum_dbz=minimum_dbz,
             )
-            frame_path = Path(frame_directory) / f"{index:04d}.gif"
-            image.save(frame_path, format="GIF", optimize=False)
+            frame_path = Path(frame_directory) / f"{index:04d}.png"
+            image.save(frame_path, format="PNG")
             image.close()
             frame_paths.append(frame_path)
         opened = [Image.open(path) for path in frame_paths]
@@ -248,7 +324,7 @@ class NationalGifBatch(Batch[NationalDay]):
         cadence = f"{self.frame_interval_minutes:g}".replace(".", "p")
         threshold = f"{self.minimum_dbz:g}".replace(".", "p")
         return (
-            f"{slug}-conus-mosaic-{cadence}min-"
+            f"{slug}-conus-mosaic-nexrad-{cadence}min-"
             f"min{threshold}dbz-{self.width}px-{self.frame_duration_ms}ms.gif"
         )
 

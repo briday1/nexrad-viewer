@@ -139,9 +139,10 @@ one sequence per radar/product; opening a sequence provides:
 
 Each sequence can render a full-resolution Plan Position GIF. Every frame is
 the actual interactive Plotly Plan Position figure—not a separate batch
-plot—with the scan's full native radar range, Portland colors, the dark
-theme, and source pixels matched to native range-gate spacing. The batch path
-bypasses viewport reduction and saves deterministically under `outputs/`.
+plot—with the scan's full native radar range, NEXRAD colors, the dark
+theme, a timestamp-only header, a horizontal full-range dBZ scale, and source
+pixels matched to native range-gate spacing. The batch path bypasses viewport
+reduction and saves deterministically under `outputs/`.
 This exact Plotly export uses Kaleido and needs Google Chrome; if Chrome is
 not already installed, run `plotly_get_chrome`.
 
