@@ -162,7 +162,7 @@ viewer continues to expose the complete fixed dBZ range.
 
 <p align="center">
   <img
-    src="figures/2026-07-24-conus-mosaic-60min-min20dbz-1200px-250ms.gif"
+    src="figures/2026-07-24-conus-mosaic-nexrad-60min-min20dbz-1200px-250ms.gif"
     alt="Full-day synchronized CONUS NEXRAD reflectivity history for July 24, 2026"
     width="900"
   >
