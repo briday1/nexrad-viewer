@@ -240,6 +240,34 @@ def compose_reflectivity_frame(
         map_image.close()
 
 
+def compose_conus_frame(
+    scans,
+    *,
+    width: int,
+    maximum_range_km: float,
+    timestamp,
+    reflectivity_limits: tuple[float, float],
+    timeline_index: int,
+) -> Image.Image:
+    """Render the canonical CONUS frame from one or many radar scans."""
+    from .national.analysis import CONUS_BOUNDS, national_mosaic_grid
+    from .national.geography import state_boundaries
+
+    _, _, reflectivity = national_mosaic_grid(
+        scans,
+        width=width,
+        maximum_range_km=maximum_range_km,
+    )
+    return compose_reflectivity_frame(
+        reflectivity,
+        timestamp=timestamp,
+        bounds=CONUS_BOUNDS,
+        boundary_rings=state_boundaries(),
+        reflectivity_limits=reflectivity_limits,
+        timeline_index=timeline_index,
+    )
+
+
 def render_animation(
     target: str | Path,
     *,
@@ -294,6 +322,7 @@ def render_animation(
 
 __all__ = [
     "NEXRAD_GIF_PALETTE",
+    "compose_conus_frame",
     "compose_frame",
     "compose_reflectivity_frame",
     "dbz_indexes",

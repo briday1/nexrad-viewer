@@ -404,7 +404,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         self.assertEqual(destination.files, workspace_destination.files)
         self.assertEqual(result.files, workspace_result.files)
         self.assertEqual(2, frame_count)
-        self.assertEqual((128, 260), frame_size)
+        self.assertEqual((128, 201), frame_size)
         self.assertEqual(100, frame_duration)
 
     def test_radial_byte_count_must_match_declared_gate_count(self):
@@ -505,6 +505,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
             )
             with Image.open(result.files[0]) as animation:
                 frame_count = animation.n_frames
+                frame_size = animation.size
 
         self.assertEqual("2024-05-20", resource.identifier)
         self.assertEqual(2, len(opened.page.playback.segments))
@@ -525,6 +526,7 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         self.assertIn("-min20dbz-", destination.files[0])
         self.assertEqual(destination.files[0], result.files[0].name)
         self.assertEqual(2, frame_count)
+        self.assertEqual((128, 201), frame_size)
 
 
 if __name__ == "__main__":

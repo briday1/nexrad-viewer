@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from math import cos, radians
 from pathlib import Path
 
 from PIL import Image
@@ -16,14 +15,12 @@ from sigvue import (
     DataResource,
 )
 
-from .analysis import EARTH_KM_PER_DEGREE, geographic_display_grid
 from .formats.nexrad import NexradLevel3Sequence, open_scan
 from .gif_rendering import (
     NEXRAD_GIF_PALETTE,
-    compose_reflectivity_frame,
+    compose_conus_frame,
     render_animation,
 )
-from .national.geography import state_boundaries
 from .plots import REFLECTIVITY_DOMAIN
 
 RENDER_GIF = "render-full-resolution-gif"
@@ -41,30 +38,11 @@ def _frame(
     """Render one site with the exact national-frame composition path."""
     scan = open_scan(sequence.headers[index].source_path)
     radius = float(scan.ground_range_edges_km[-1])
-    latitude = scan.header.latitude_deg
-    longitude = scan.header.longitude_deg
-    latitude_span = radius / EARTH_KM_PER_DEGREE
-    longitude_span = radius / (
-        EARTH_KM_PER_DEGREE * cos(radians(latitude))
-    )
-    bounds = (
-        longitude - longitude_span,
-        longitude + longitude_span,
-        latitude - latitude_span,
-        latitude + latitude_span,
-    )
-    _, _, reflectivity = geographic_display_grid(
-        scan,
-        bounds=bounds,
+    return compose_conus_frame(
+        (scan,),
         width=width,
-        height=width,
         maximum_range_km=radius,
-    )
-    return compose_reflectivity_frame(
-        reflectivity,
         timestamp=scan.header.scan_time,
-        bounds=bounds,
-        boundary_rings=state_boundaries(),
         reflectivity_limits=REFLECTIVITY_DOMAIN,
         timeline_index=index,
     )

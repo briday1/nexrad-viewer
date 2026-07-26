@@ -137,10 +137,10 @@ one sequence per radar/product; opening a sequence provides:
 - fixed native dBZ limits and viewport-aware rasterization;
 - exact native-gate distributions, statistics, and metadata.
 
-Each sequence renders through the exact same GIF rasterization, frame
-composition, and animation code as the national mosaic. The site adapter
-supplies one radar scan, its full geographic bounds, and the full −20 to
-75 dBZ scale. Both site and national maps default to 1,200 pixels wide and
+Each sequence renders through the exact same full-CONUS grid, rasterization,
+frame composition, and animation code as the national mosaic. The site adapter
+supplies one radar scan instead of the aligned national scan collection and
+uses the full −20 to 75 dBZ scale. Both maps default to 1,200 pixels wide and
 save deterministically under `outputs/`.
 
 ### CONUS Radar Mosaic
