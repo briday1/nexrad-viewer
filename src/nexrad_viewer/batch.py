@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import re
 from pathlib import Path
 
@@ -55,6 +56,7 @@ def render_sequence_gif(
     *,
     width: int,
     frame_duration_ms: int,
+    cancel: Callable[[], None] | None = None,
 ) -> Path:
     """Render every scan through the real Plotly view and write atomically."""
     destination = Path(target).expanduser().resolve()
@@ -64,6 +66,7 @@ def render_sequence_gif(
         frame_count=sequence.scan_count,
         frame_duration_ms=frame_duration_ms,
         frame_builder=lambda index: _frame(sequence, index, width=width),
+        cancel=cancel,
     )
 
 
@@ -144,6 +147,7 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
             directory / self._filename(resource),
             width=self.width,
             frame_duration_ms=self.frame_duration_ms,
+            cancel=request.raise_if_cancelled,
         )
         return BatchResult(
             (target,),
@@ -157,14 +161,15 @@ class NexradGifBatch(Batch[NexradLevel3Sequence]):
         request: BatchRequest,
         directory: Path,
     ) -> BatchResult:
-        outputs = tuple(
-            render_sequence_gif(
+        outputs = request.each(
+            resources,
+            lambda resource: render_sequence_gif(
                 open_resource(resource),
                 directory / self._filename(resource),
                 width=self.width,
                 frame_duration_ms=self.frame_duration_ms,
-            )
-            for resource in resources
+                cancel=request.raise_if_cancelled,
+            ),
         )
         return BatchResult(
             outputs,

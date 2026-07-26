@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import re
 from math import isfinite
 from pathlib import Path
@@ -79,6 +80,7 @@ def render_national_gif(
     width: int,
     minimum_dbz: float,
     frame_duration_ms: int,
+    cancel: Callable[[], None] | None = None,
 ) -> Path:
     """Render all synchronized frames without interactive viewport reduction."""
     destination = Path(target).expanduser().resolve()
@@ -104,6 +106,7 @@ def render_national_gif(
             width=width,
             minimum_dbz=minimum_dbz,
         ),
+        cancel=cancel,
     )
 
 
@@ -195,6 +198,7 @@ class NationalGifBatch(Batch[NationalDay]):
             width=self.width,
             minimum_dbz=self.minimum_dbz,
             frame_duration_ms=self.frame_duration_ms,
+            cancel=request.raise_if_cancelled,
         )
         return BatchResult((output,), "Rendered national NEXRAD mosaic GIF")
 
@@ -205,8 +209,9 @@ class NationalGifBatch(Batch[NationalDay]):
         request: BatchRequest,
         directory: Path,
     ) -> BatchResult:
-        outputs = tuple(
-            render_national_gif(
+        outputs = request.each(
+            resources,
+            lambda resource: render_national_gif(
                 open_resource(resource),
                 directory / self._filename(resource),
                 frame_interval_minutes=self.frame_interval_minutes,
@@ -214,8 +219,8 @@ class NationalGifBatch(Batch[NationalDay]):
                 width=self.width,
                 minimum_dbz=self.minimum_dbz,
                 frame_duration_ms=self.frame_duration_ms,
-            )
-            for resource in resources
+                cancel=request.raise_if_cancelled,
+            ),
         )
         return BatchResult(
             outputs,

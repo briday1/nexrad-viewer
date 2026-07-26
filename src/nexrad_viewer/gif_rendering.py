@@ -282,6 +282,7 @@ def render_animation(
     frame_count: int,
     frame_duration_ms: int,
     frame_builder: Callable[[int], Image.Image],
+    cancel: Callable[[], None] | None = None,
 ) -> Path:
     """Render PNG intermediates and atomically encode one GIF animation."""
     if frame_count <= 0:
@@ -296,11 +297,15 @@ def render_animation(
     ) as frame_directory:
         frame_paths: list[Path] = []
         for index in range(frame_count):
+            if cancel is not None:
+                cancel()
             image = frame_builder(index)
             frame_path = Path(frame_directory) / f"{index:04d}.png"
             image.save(frame_path, format="PNG")
             image.close()
             frame_paths.append(frame_path)
+        if cancel is not None:
+            cancel()
         opened = [Image.open(path) for path in frame_paths]
         with NamedTemporaryFile(
             dir=destination.parent,
@@ -310,6 +315,8 @@ def render_animation(
         ) as stream:
             temporary = Path(stream.name)
         try:
+            if cancel is not None:
+                cancel()
             opened[0].save(
                 temporary,
                 format="GIF",
@@ -320,6 +327,8 @@ def render_animation(
                 disposal=2,
                 optimize=False,
             )
+            if cancel is not None:
+                cancel()
             temporary.replace(destination)
         finally:
             for image in opened:
