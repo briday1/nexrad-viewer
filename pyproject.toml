@@ -19,9 +19,11 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=8.0", "tomli>=2; python_version < '3.11'"]
 release = ["build>=1.2", "twine>=5.0"]
+desktop = ["sigvue[desktop]>=2026.58"]
 
 [project.scripts]
 nexrad-viewer = "nexrad_viewer.cli:main"
+nexrad-viewer-desktop = "nexrad_viewer.desktop:main"
 
 [project.entry-points."sigvue.workspaces"]
 nexrad-site-viewer = "nexrad_viewer.workspace:create_workspace"

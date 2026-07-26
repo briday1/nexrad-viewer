@@ -36,11 +36,10 @@ Its batch action renders each native scan as a full-resolution animation:
 
 ## Install
 
-Install the viewer. Add Sigvue's desktop extra when you want a native window:
+Install the viewer with its desktop extra when you want a native window:
 
 ```bash
-python -m pip install -e .
-python -m pip install "sigvue[desktop]"
+python -m pip install -e ".[desktop]"
 ```
 
 ## Get a full day of national data
@@ -97,10 +96,10 @@ from the installed package, wheel, and console entry points.
 
 ## Run
 
-Launch the same `browser.toml` through Sigvue's native desktop host:
+Launch the NEXRAD-branded native desktop tool:
 
 ```bash
-sigvue-desktop --config browser.toml
+nexrad-viewer-desktop
 ```
 
 Or use an ordinary browser:
@@ -213,10 +212,9 @@ from the official U.S. Census TIGERweb States layer.
 
 ## Desktop delivery
 
-Desktop delivery belongs to Sigvue rather than this workspace package.
-`sigvue-desktop` loads this repository's normal profile, so the readers,
-views, output paths, fullscreen control, and batch behavior stay identical
-without a NEXRAD-specific desktop executable.
+`nexrad-viewer-desktop` owns the installed product command and NEXRAD defaults.
+It delegates native window hosting to Sigvue internally, so the shared desktop
+machinery does not leak into the tool's installation or identity.
 
 ## Test and package
 
