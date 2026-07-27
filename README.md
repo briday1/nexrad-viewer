@@ -155,6 +155,8 @@ full-range action finds the sequence-wide native maximum once and holds that
 extent throughout the animation, avoiding frame-to-frame scale changes.
 Circular images use nearest native radial/gate lookup without interpolating
 reflectivity and choose their pixel count from the finest native gate spacing.
+They include the same fixed NEXRAD reflectivity colorbar beneath the map as
+the full-width and CONUS animations.
 For the usual 0.25 km N0B gates, the data square is therefore 480, 960, and
 1,840 pixels for the three fixed ranges. The full-range result can be much
 larger and is intentionally an explicit action.

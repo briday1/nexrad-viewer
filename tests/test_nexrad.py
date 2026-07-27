@@ -407,8 +407,15 @@ class NexradLevel3ReaderTests(unittest.TestCase):
                 circular_frame_count = animation.n_frames
                 circular_frame_size = animation.size
                 animation.seek(0)
-                circular_left_ring = animation.convert("RGB").getpixel(
-                    (0, circular_frame_size[1] // 2 + 34)
+                circular_frame = animation.convert("RGB")
+                circular_left_ring = circular_frame.getpixel(
+                    (0, 68 + circular_frame_size[0] // 2)
+                )
+                circular_colorbar = circular_frame.getpixel(
+                    (
+                        circular_frame_size[0] // 2,
+                        68 + circular_frame_size[0] + 8,
+                    )
                 )
 
         self.assertEqual((0, 9), tuple(histogram.layout.yaxis.range))
@@ -452,8 +459,9 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         self.assertEqual((128, 201), frame_size)
         self.assertEqual(100, frame_duration)
         self.assertEqual(2, circular_frame_count)
-        self.assertEqual((480, 548), circular_frame_size)
+        self.assertEqual((480, 624), circular_frame_size)
         self.assertEqual((255, 255, 255), circular_left_ring)
+        self.assertNotEqual((8, 17, 23), circular_colorbar)
 
     def test_radial_byte_count_must_match_declared_gate_count(self):
         with TemporaryDirectory() as directory:
