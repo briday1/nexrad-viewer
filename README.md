@@ -37,11 +37,12 @@ a fixed 120 km radius:
 
 ## Install
 
-Install the viewer with its desktop extra when you want the branded native
-application:
+Install the viewer. Add Sigvue's shared desktop extra when you want a native
+window:
 
 ```bash
-python -m pip install -e ".[desktop]"
+python -m pip install -e .
+python -m pip install "sigvue[desktop]"
 ```
 
 ## Get a full day of national data
@@ -98,10 +99,10 @@ from the installed package, wheel, and console entry points.
 
 ## Run
 
-Launch the NEXRAD-branded native desktop application:
+Open the repository profile with Sigvue's shared desktop host:
 
 ```bash
-nexrad-viewer-desktop
+sigvue-desktop --config browser.toml
 ```
 
 Or use an ordinary browser:
@@ -246,11 +247,10 @@ from the official U.S. Census TIGERweb States layer.
 
 ## Desktop delivery
 
-`nexrad-viewer-desktop` owns the installed product command and NEXRAD defaults.
-It delegates native window hosting to Sigvue internally, while keeping the
-application-specific identity, default data root, and durable output root.
-The general-purpose `sigvue-desktop` command remains available separately for
-opening arbitrary workspace profiles.
+Desktop hosting belongs to Sigvue rather than this workspace package.
+`sigvue-desktop --config browser.toml` loads the same two NEXRAD workspaces,
+data roots, and durable batch destinations in a native pywebview window. No
+NEXRAD-specific desktop executable is installed.
 
 ## Test and package
 

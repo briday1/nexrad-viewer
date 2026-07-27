@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nexrad-viewer"
-version = "0.3.2"
+version = "0.3.3"
 description = "A focused NOAA NEXRAD Level III browser built with Sigvue"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,11 +19,9 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=8.0", "tomli>=2; python_version < '3.11'"]
 release = ["build>=1.2", "twine>=5.0"]
-desktop = ["sigvue[desktop]>=2026.58"]
 
 [project.scripts]
 nexrad-viewer = "nexrad_viewer.cli:main"
-nexrad-viewer-desktop = "nexrad_viewer.desktop:main"
 
 [project.entry-points."sigvue.workspaces"]
 nexrad-site-viewer = "nexrad_viewer.workspace:create_workspace"

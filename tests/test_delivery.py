@@ -12,7 +12,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10
 
 from sigvue.profile import load_browser_profile
 
-from nexrad_viewer import cli, desktop
+from nexrad_viewer import cli
 from nexrad_viewer.runtime import runtime_profile
 
 
@@ -86,51 +86,13 @@ def test_nexrad_cli_supplies_profile_and_preserves_sigvue_arguments():
         )
 
 
-def test_nexrad_desktop_supplies_profile_to_shared_native_host():
-    with TemporaryDirectory() as directory:
-        root = Path(directory)
-        observed = {}
-
-        def inspect_invocation():
-            arguments = list(sys.argv[1:])
-            profile = Path(arguments[arguments.index("--config") + 1])
-            observed["arguments"] = arguments
-            observed["profile"] = load_browser_profile(profile)
-
-        with (
-            patch.object(
-                sys,
-                "argv",
-                [
-                    "nexrad-viewer-desktop",
-                    "--data-root",
-                    str(root / "data"),
-                    "--output-root",
-                    str(root / "outputs"),
-                    "--width",
-                    "1600",
-                ],
-            ),
-            patch.object(
-                desktop,
-                "sigvue_desktop_main",
-                side_effect=inspect_invocation,
-            ),
-        ):
-            desktop.main()
-
-        assert observed["arguments"][2:] == ["--width", "1600"]
-        workspace = observed["profile"].workspaces[0]
-        assert Path(workspace.configuration["data_root"]) == (root / "data").resolve()
-
-
-def test_package_owns_branded_desktop_entry_point():
+def test_package_uses_shared_sigvue_desktop_entry_point():
     project = Path(__file__).resolve().parents[1]
     payload = tomllib.loads((project / "pyproject.toml").read_text(encoding="utf-8"))
     scripts = payload["project"]["scripts"]
 
     assert scripts["nexrad-viewer"] == "nexrad_viewer.cli:main"
-    assert scripts["nexrad-viewer-desktop"] == "nexrad_viewer.desktop:main"
+    assert "nexrad-viewer-desktop" not in scripts
     assert "nexrad-viewer-build" not in scripts
     assert "nexrad-download" not in scripts
     assert not (project / "src" / "nexrad_viewer" / "download.py").exists()
@@ -138,10 +100,8 @@ def test_package_owns_branded_desktop_entry_point():
         requirement.split(">=", 1)[0]
         for requirement in payload["project"]["dependencies"]
     } == {"certifi", "numpy", "pillow", "plotly", "sigvue"}
-    assert payload["project"]["optional-dependencies"]["desktop"] == [
-        "sigvue[desktop]>=2026.58"
-    ]
-    assert (project / "src" / "nexrad_viewer" / "desktop.py").is_file()
+    assert "desktop" not in payload["project"]["optional-dependencies"]
+    assert not (project / "src" / "nexrad_viewer" / "desktop.py").exists()
     assert not (
         project / "src" / "nexrad_viewer" / "_packaging" / "build.py"
     ).exists()
