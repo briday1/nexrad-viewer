@@ -10,8 +10,8 @@ feeds two workspaces:
 - **CONUS Radar Mosaic** treats each date as one synchronized dataset and
   shows the nearest scan from every available site on a minimal U.S. map.
 
-Both run in an ordinary browser or Sigvue's shared desktop host. Both also
-provide deterministic batch output.
+Both run in an ordinary browser or the branded native desktop application.
+Both also provide deterministic batch output.
 
 ## Preview
 
@@ -37,12 +37,11 @@ a fixed 120 km radius:
 
 ## Install
 
-Install the viewer. Add Sigvue's shared desktop extra when you want a native
-window:
+Install the viewer with its desktop extra when you want the branded native
+application:
 
 ```bash
-python -m pip install -e .
-python -m pip install "sigvue[desktop]"
+python -m pip install -e ".[desktop]"
 ```
 
 ## Get a full day of national data
@@ -99,10 +98,10 @@ from the installed package, wheel, and console entry points.
 
 ## Run
 
-Open the repository profile with Sigvue's shared desktop host:
+Launch the NEXRAD-branded native desktop application:
 
 ```bash
-sigvue-desktop --config browser.toml
+nexrad-viewer-desktop
 ```
 
 Or use an ordinary browser:
@@ -247,10 +246,11 @@ from the official U.S. Census TIGERweb States layer.
 
 ## Desktop delivery
 
-Desktop hosting belongs to Sigvue rather than this workspace package.
-`sigvue-desktop --config browser.toml` loads the same two NEXRAD workspaces,
-data roots, and durable batch destinations in a native pywebview window. No
-NEXRAD-specific desktop executable is installed.
+`nexrad-viewer-desktop` owns the installed product command and NEXRAD defaults.
+It delegates native window hosting to Sigvue internally, while keeping the
+application-specific identity, default data root, and durable output root.
+The general-purpose `sigvue-desktop` command remains available separately for
+opening arbitrary workspace profiles.
 
 ## Test and package
 
