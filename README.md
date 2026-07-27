@@ -37,7 +37,8 @@ a fixed 120 km radius:
 
 ## Install
 
-Install the viewer with its desktop extra when you want a native window:
+Install the viewer with its desktop extra when you want the branded native
+application:
 
 ```bash
 python -m pip install -e ".[desktop]"
@@ -97,7 +98,7 @@ from the installed package, wheel, and console entry points.
 
 ## Run
 
-Launch the NEXRAD-branded native desktop tool:
+Launch the NEXRAD-branded native desktop application:
 
 ```bash
 nexrad-viewer-desktop
@@ -171,6 +172,10 @@ nexrad-viewer batch \
   --action render-circular-ppi-120km-gif
 ```
 
+The row's **Browse** menu opens either **All batch results** or the durable
+collection for one selected render type, so the five output families remain
+easy to inspect independently.
+
 ### CONUS Radar Mosaic
 
 Each ISO date folder is one national item. The segmented time control moves
@@ -242,8 +247,10 @@ from the official U.S. Census TIGERweb States layer.
 ## Desktop delivery
 
 `nexrad-viewer-desktop` owns the installed product command and NEXRAD defaults.
-It delegates native window hosting to Sigvue internally, so the shared desktop
-machinery does not leak into the tool's installation or identity.
+It delegates native window hosting to Sigvue internally, while keeping the
+application-specific identity, default data root, and durable output root.
+The general-purpose `sigvue-desktop` command remains available separately for
+opening arbitrary workspace profiles.
 
 ## Test and package
 
