@@ -246,6 +246,81 @@ def compose_reflectivity_frame(
         map_image.close()
 
 
+def compose_circular_frame(
+    reflectivity: np.ndarray,
+    *,
+    timestamp,
+    radar_id: str,
+    product_id: str,
+    radius_km: float,
+    frame_index: int,
+    frame_count: int,
+) -> Image.Image:
+    """Compose the historical radar-centered PPI with native-scale rings."""
+    map_image = indexed_reflectivity(reflectivity)
+    width, height = map_image.size
+    header_height = 68
+    canvas = Image.new(
+        "P",
+        (width, height + header_height),
+        color=0,
+    )
+    canvas.putpalette(NEXRAD_GIF_PALETTE)
+    try:
+        canvas.paste(map_image, (0, header_height))
+    finally:
+        map_image.close()
+    draw = ImageDraw.Draw(canvas)
+    title_font = _font(max(13, min(22, width // 42)))
+    detail_font = _font(max(11, min(16, width // 56)))
+    draw.text(
+        (12, 7),
+        f"{radar_id} {product_id} {timestamp:%Y-%m-%d %H:%M:%S} UTC",
+        fill=255,
+        font=title_font,
+    )
+    draw.text(
+        (12, 36),
+        (
+            f"Frame {frame_index + 1}/{frame_count} · "
+            f"radius {radius_km:g} km · -20 to 75 dBZ"
+        ),
+        fill=255,
+        font=detail_font,
+    )
+    center_x = width / 2.0
+    center_y = header_height + height / 2.0
+    line_width = max(1, width // 640)
+    for fraction in (0.25, 0.5, 0.75, 1.0):
+        ring = fraction * min(width, height) / 2.0
+        draw.ellipse(
+            (
+                center_x - ring,
+                center_y - ring,
+                center_x + ring,
+                center_y + ring,
+            ),
+            outline=255,
+            width=line_width,
+        )
+    marker = max(3, width // 180)
+    draw.ellipse(
+        (
+            center_x - marker,
+            center_y - marker,
+            center_x + marker,
+            center_y + marker,
+        ),
+        fill=255,
+    )
+    # Preserve distinct GIF frames when the meteorological pixels are equal.
+    canvas.putpixel(
+        (width - 1, header_height - 1),
+        1 + frame_index % 254,
+    )
+    return canvas
+
+
 def compose_conus_frame(
     scans,
     *,
@@ -339,6 +414,7 @@ def render_animation(
 
 __all__ = [
     "NEXRAD_GIF_PALETTE",
+    "compose_circular_frame",
     "compose_conus_frame",
     "compose_frame",
     "compose_reflectivity_frame",

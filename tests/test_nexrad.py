@@ -11,7 +11,14 @@ import numpy as np
 from PIL import Image
 from plotly import colors as plotly_colors
 
-from nexrad_viewer.batch import NEXRAD_GIF_PALETTE, RENDER_GIF
+from nexrad_viewer.batch import (
+    NEXRAD_GIF_PALETTE,
+    RENDER_CIRCULAR_60KM_GIF,
+    RENDER_CIRCULAR_120KM_GIF,
+    RENDER_CIRCULAR_230KM_GIF,
+    RENDER_CIRCULAR_FULL_GIF,
+    RENDER_GIF,
+)
 from nexrad_viewer.formats.nexrad import (
     NexradFormatError,
     read_level3_header,
@@ -383,10 +390,26 @@ class NexradLevel3ReaderTests(unittest.TestCase):
                 RENDER_GIF,
                 output,
             )
+            circular_destination = workspace.item_batch_destination(
+                resource.identifier,
+                RENDER_CIRCULAR_60KM_GIF,
+            )
+            circular_result = workspace.run_item_batch(
+                resource.identifier,
+                RENDER_CIRCULAR_60KM_GIF,
+                output,
+            )
             with Image.open(result.files[0]) as animation:
                 frame_count = animation.n_frames
                 frame_size = animation.size
                 frame_duration = animation.info["duration"]
+            with Image.open(circular_result.files[0]) as animation:
+                circular_frame_count = animation.n_frames
+                circular_frame_size = animation.size
+                animation.seek(0)
+                circular_left_ring = animation.convert("RGB").getpixel(
+                    (0, circular_frame_size[1] // 2 + 34)
+                )
 
         self.assertEqual((0, 9), tuple(histogram.layout.yaxis.range))
         reflectivity_limits = controls["weather_radar_reflectivity_limits"]
@@ -403,9 +426,34 @@ class NexradLevel3ReaderTests(unittest.TestCase):
         self.assertEqual(destination.files[0], result.files[0].name)
         self.assertEqual(destination.files, workspace_destination.files)
         self.assertEqual(result.files, workspace_result.files)
+        self.assertEqual(
+            (
+                RENDER_GIF,
+                RENDER_CIRCULAR_60KM_GIF,
+                RENDER_CIRCULAR_120KM_GIF,
+                RENDER_CIRCULAR_230KM_GIF,
+                RENDER_CIRCULAR_FULL_GIF,
+            ),
+            tuple(action.value for action in workspace.batch.item_actions),
+        )
+        self.assertIn("-circular-ppi-60km-native-gates-", circular_destination.files[0])
+        self.assertEqual(
+            circular_destination.files[0],
+            circular_result.files[0].name,
+        )
+        self.assertIn(
+            "-circular-ppi-full-native-range-native-gates-",
+            workspace.item_batch_destination(
+                resource.identifier,
+                RENDER_CIRCULAR_FULL_GIF,
+            ).files[0],
+        )
         self.assertEqual(2, frame_count)
         self.assertEqual((128, 201), frame_size)
         self.assertEqual(100, frame_duration)
+        self.assertEqual(2, circular_frame_count)
+        self.assertEqual((480, 548), circular_frame_size)
+        self.assertEqual((255, 255, 255), circular_left_ring)
 
     def test_radial_byte_count_must_match_declared_gate_count(self):
         with TemporaryDirectory() as directory:

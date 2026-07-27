@@ -24,7 +24,8 @@ georeferenced native Level III base-reflectivity map:
 
 ![Interactive 120 km NEXRAD plan-position display](figures/120_ppi.png)
 
-Its batch action renders each native scan as a full-resolution animation:
+One of its selectable circular-PPI batch actions renders each native scan at
+a fixed 120 km radius:
 
 <p align="center">
   <img
@@ -136,11 +137,37 @@ one sequence per radar/product; opening a sequence provides:
 - fixed native dBZ limits and viewport-aware rasterization;
 - exact native-gate distributions, statistics, and metadata.
 
-Each sequence renders through the exact same full-CONUS grid, rasterization,
-frame composition, and animation code as the national mosaic. The site adapter
-supplies one radar scan instead of the aligned national scan collection and
-uses the full −20 to 75 dBZ scale. Both maps default to 1,200 pixels wide and
-save deterministically under `outputs/`.
+The existing **Render full-width Plan Position GIF** action is unchanged. It
+renders one radar through the same canonical full-CONUS grid, state boundaries,
+frame composition, and animation code as the national mosaic.
+
+Four additional actions render the historical radar-centered circular PPI
+without a geographic basemap:
+
+- **60 km**
+- **120 km**
+- **230 km**
+- **full native range**
+
+The fixed-range actions keep exactly the requested radius across every frame;
+if a scan has less coverage, the unsupported outer area remains empty. The
+full-range action finds the sequence-wide native maximum once and holds that
+extent throughout the animation, avoiding frame-to-frame scale changes.
+Circular images use nearest native radial/gate lookup without interpolating
+reflectivity and choose their pixel count from the finest native gate spacing.
+For the usual 0.25 km N0B gates, the data square is therefore 480, 960, and
+1,840 pixels for the three fixed ranges. The full-range result can be much
+larger and is intentionally an explicit action.
+
+Every action has a distinct deterministic filename and independent
+ready/rerun state under `outputs/`. For example:
+
+```bash
+nexrad-viewer batch \
+  --workspace nexrad-sites \
+  --item '2026-07-24::TLX-N0B' \
+  --action render-circular-ppi-120km-gif
+```
 
 ### CONUS Radar Mosaic
 
